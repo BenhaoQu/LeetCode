@@ -21,12 +21,13 @@ jobs:
           problems
           premiums
           python
+          premiums
+          mysql
           qubhjava
           typescript
           go.mod
           go.sum
           pom.xml
-          demo
 
     - name: Set up Python environment
       uses: actions/setup-python@v2
@@ -42,9 +43,9 @@ jobs:
       env:
         COOKIE: ${{ secrets.COOKIE }}
         PUSH_SERVER: ${{ secrets.PUSH_SERVER }}
-        PUSH_KEY: ${{ secrets.PUSH_KEY }}
-        PROBLEM_FOLDER: ${{ secrets.PROBLEM_FOLDER }}
-        LANGUAGES: ${{secrets.LANGUAGES}}
+        PUSH_KEY: ${{ secrets.PUSH_KEY || '' }}
+        PROBLEM_FOLDER: ${{ secrets.PROBLEM_FOLDER || '' }}
+        LANGUAGES: ${{secrets.LANGUAGES || ''}}
       run: |
         set +e
         python python/scripts/daily_auto.py > /tmp/msg
