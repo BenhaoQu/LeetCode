@@ -48,8 +48,7 @@ jobs:
           feat: update from master
           
           auto generated
-        committer: "qubenhao2@gmail.com"
-        author: "benhao"
+        author: "benhao <qubenhao2@gmail.com>"
         branch: ${{ github.ref }}
         base: "master"
         title: "Merge from master"
