@@ -11,6 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: master
           persist-credentials: false
           fetch-depth: 0 # Ensure all history is fetched
 
@@ -39,6 +40,11 @@ jobs:
             } else {
               core.setOutput("changes", "false");
             }
+      - name: Reset master branch
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git fetch origin master:master
+          git reset --hard master
 
       # Conditional step to create a pull request only if there are changes
       - name: Create Pull Request
