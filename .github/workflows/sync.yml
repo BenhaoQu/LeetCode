@@ -49,6 +49,6 @@ jobs:
           
           auto generated
         author: "benhao <qubenhao2@gmail.com>"
-        branch: ${{ github.ref }}
-        base: "master"
+        base: ${{ github.ref }}
+        branch: "master"
         title: "Merge from master"
