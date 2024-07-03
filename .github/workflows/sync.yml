@@ -20,7 +20,7 @@ jobs:
           source_repo: "https://github.com/QuBenhao/LeetCode.git"
           source_branch: "master"
           destination_branch: "master"
-          github_token: ${{ secrets.TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # Step to check for changes
       - name: Check for changes
