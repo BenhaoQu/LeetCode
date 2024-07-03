@@ -51,7 +51,7 @@ jobs:
             
             auto generated
           author: "benhao <qubenhao2@gmail.com>"
-          branch: "sync-master-to-demo_master" # Use a different branch for PR
+          branch: "master"
           base: "demo_master"
           title: "Merge from master"
           body: "This is an auto-generated PR to sync changes from the master branch to demo_master."
