@@ -50,4 +50,5 @@ jobs:
           auto generated
         author: "benhao <qubenhao2@gmail.com>"
         branch: "master"
+        base: "demo_master"
         title: "Merge from master"
