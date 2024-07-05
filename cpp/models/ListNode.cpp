@@ -5,17 +5,16 @@
 #include "ListNode.h"
 
 ListNode *IntArrayToListNode(std::vector<int> &arr) {
-    ListNode *dummy = new ListNode();
-    ListNode *p = dummy;
-    for (size_t i = 0; i < arr.size(); i++) {
-        p->next = new ListNode(arr[i]);
+    auto dummy = new ListNode(), p = dummy;
+    for (auto val : arr) {
+        p->next = new ListNode(val);
         p = p->next;
     }
     return dummy->next;
 }
 
 std::vector<int> &ListNodeToIntArray(ListNode *head) {
-    std::vector<int> *arr = new std::vector<int>();
+    auto *arr = new std::vector<int>();
     while (head != nullptr) {
         arr->push_back(head->val);
         head = head->next;
