@@ -6,6 +6,7 @@
 #define LEETCODECPP_LISTNODE_H
 
 #include <vector>
+#include <tuple>
 
 struct ListNode {
     int val;
@@ -23,6 +24,10 @@ struct ListNode {
 };
 
 ListNode *IntArrayToListNode(std::vector<int> &arr);
+
 std::vector<int> &ListNodeToIntArray(ListNode *head);
+
+std::tuple<ListNode *, ListNode *>
+IntArrayToIntersectionListNode(std::vector<int> &arr1, std::vector<int> &arr2, int iv, int idxA, int idxB);
 
 #endif //LEETCODECPP_LISTNODE_H
