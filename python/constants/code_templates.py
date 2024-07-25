@@ -33,12 +33,12 @@ import (
 
 {}
 
-func Solve(inputJsonValues string) {}
+func Solve(inputJsonValues string) interface{{}} {{
 \tinputValues := strings.Split(inputJsonValues, "\\n")
 {}
 {}
 \treturn {}({})
-{}
+}}
 """
 
 SOLUTION_TEMPLATE_GOLANG_MODIFY_IN_PLACE = """package problem{}
@@ -49,13 +49,13 @@ import (
 
 {}
 
-func Solve(inputJsonValues string) {}
+func Solve(inputJsonValues string) interface{{}} {{
 \tinputValues := strings.Split(inputJsonValues, "\\n")
 {}
 {}
 \t{}({})
 \treturn {}
-{}
+}}
 """
 
 TESTCASE_TEMPLATE_GOLANG = """package golang
@@ -65,9 +65,9 @@ import (
 \t"testing"
 )
 
-func {}(t *testing.T) {}
+func {}(t *testing.T) {{
 \t{}
-{}
+}}
 """
 
 SOLUTION_TEMPLATE_JAVA = """package {}.{}_{};
@@ -77,15 +77,15 @@ import java.util.*;
 import qubhjava.BaseSolution;
 {}
 
-public class Solution extends BaseSolution {}
+public class Solution extends BaseSolution {{
 {}
 
     @Override
-    public Object solve(String[] inputJsonValues) {}
+    public Object solve(String[] inputJsonValues) {{
         {}
         return JSON.toJSON({});
-    {}
-{}
+    }}
+}}
 """
 
 SOLUTION_TEMPLATE_CPP = """//go:build ignore
@@ -97,19 +97,19 @@ using json = nlohmann::json;
 
 {}
 
-json leetcode::qubh::Solve(string input_json_values) {}
+json leetcode::qubh::Solve(string input_json_values) {{
 \tvector<string> inputArray;
 \tsize_t pos = input_json_values.find('\\n');
-\twhile (pos != string::npos) {}
+\twhile (pos != string::npos) {{
 \t\tinputArray.push_back(input_json_values.substr(0, pos));
 \t\tinput_json_values = input_json_values.substr(pos + 1);
 \t\tpos = input_json_values.find('\\n');
-\t{}
+\t}}
 \tinputArray.push_back(input_json_values);
 
 {}
 {}
-{}
+}}
 """
 
 TESTCASE_TEMPLATE_CPP = """cc_test(
@@ -136,9 +136,68 @@ TESTCASE_TEMPLATE_CPP = """cc_test(
 
 SOLUTION_TEMPLATE_TYPESCRIPT = """{}{}
 
-export function Solve(inputJsonElement: string): any {}
+export function Solve(inputJsonElement: string): any {{
 \tconst inputValues: string[] = inputJsonElement.split(\"\\n\");
 {}
 \treturn {};
+}}
+"""
+
+SOLUTION_TEMPLATE_RUST = """use serde_json::{{json, Value}};
 {}
+pub struct Solution;
+
+{}
+
+#[cfg(feature = "solution_{}")]
+pub fn solve(input_string: String) -> Value {{
+\tlet input_values: Vec<String> = input_string.split('\\n').map(|x| x.to_string()).collect();
+\t{}
+}}
+"""
+
+SOLUTIONS_TEMPLATE_RUST = """const PROBLEMS: [[&str; 2]; {}] = [{}];
+
+#[cfg(test)]
+mod test {{
+\tuse test_executor::run_test::run_test;
+\tuse crate::PROBLEMS;
+
+\t{}
+
+\t#[test]
+\tfn test_solutions() {{
+\t\tfor (i, problem) in PROBLEMS.iter().enumerate() {{
+\t\t\tlet (folder, id) = (problem[0], problem[1]);
+\t\t\tprintln!("Testing problem {{}}", id);
+\t\t\trun_test(id, folder, match i {{
+\t\t\t\t{}
+\t\t\t\t_ => panic!("Unknown solution"),
+\t\t\t}});
+\t\t}}
+\t}}
+}}
+"""
+
+CARGO_TOML_TEMPLATE_SOLUTION = """[package]
+name = "solution_{}"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.79.0"
+authors = ["benhao"]
+description = "LeetCode Solution {} in Rust"
+readme = "../../README.md"
+
+[features]
+solution_{} = []
+
+[dependencies]
+serde_json = "1.0"
+rand = "0.8.4"
+regex = "1.10.5"
+library = {{ path = "../../rust/library", features = ["model"] }}
+
+[lib]
+name = "solution_{}"
+path = "solution.rs"
 """

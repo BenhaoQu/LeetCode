@@ -3,16 +3,9 @@ import * as ts from "typescript";
 
 var _ = require('lodash-contrib');
 const vm = require('node:vm');
-import {Queue} from '@datastructures-js/queue';
-import {
-    PriorityQueue,
-    MinPriorityQueue,
-    MaxPriorityQueue
-} from '@datastructures-js/priority-queue';
-import {ListNode, IntArrayToLinkedList, LinkedListToIntArray, IntArrayToIntersectionLinkedList} from "./models/listnode";
-import {TreeNode, TreeNodeToJSONArray, JSONArrayToTreeNode, JSONArrayToTreeNodeArray} from "./models/treenode"
+import {CompareResults} from "./common";
 
-const PROBLEMS: string[][] = [['53', 'problems'], ['101', 'problems']];
+const PROBLEMS: string[][] = [['49', 'problems']];
 
 for (const [problemId, problemFolder] of PROBLEMS) {
     describe(`Test for problem ${problemId}`, () => {
@@ -37,7 +30,12 @@ for (const [problemId, problemFolder] of PROBLEMS) {
             solutionFileContent = solutionFileContent.split('\n').filter(line => !line.trim().startsWith('import ')).join('\n');
             solutionFileContent = solutionFileContent.replace("export function Solve", "function Solve");
             solutionFileContent += "const execResult = Solve(testInputJsonString);"
-            let result = ts.transpileModule(solutionFileContent, {compilerOptions: {module: ts.ModuleKind.ES2022}});
+            let result = ts.transpileModule(solutionFileContent, {
+                compilerOptions: {
+                    module: ts.ModuleKind.ES2022,
+                    downlevelIteration: true
+                }
+            });
             const codeText: string = result["outputText"];
             script = new vm.Script(codeText);
         });
@@ -45,31 +43,9 @@ for (const [problemId, problemFolder] of PROBLEMS) {
         test(`Test solution ${problemId}`, () => {
             expect(script).toBeDefined();
             for (let i: number = 0; i < inputJson.length; i++) {
-                const context = {
-                    testInputJsonString: inputJson[i],
-                    execResult: null as any,
-                    ListNode,
-                    IntArrayToLinkedList,
-                    LinkedListToIntArray,
-                    IntArrayToIntersectionLinkedList,
-                    TreeNode,
-                    TreeNodeToJSONArray,
-                    JSONArrayToTreeNode,
-                    JSONArrayToTreeNodeArray,
-                    Queue,
-                    PriorityQueue,
-                    MinPriorityQueue,
-                    MaxPriorityQueue,
-                };
-                vm.createContext(context); // Contextify the object.
-                script.runInContext(context, {timeout: 3000});
-                const result: any = context.execResult;
-                if (_.isFloat(outputJson[i])) {
-                    expect(result).toBeCloseTo(outputJson[i]);
-                } else {
-                    expect(result).toEqual(outputJson[i]);
-                }
+                CompareResults(script, inputJson[i], outputJson[i]);
             }
         })
     });
 }
+

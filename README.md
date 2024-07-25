@@ -11,6 +11,7 @@ Algorithms in LeetCode by Benhao
     * [Java](#java)
     * [Cpp](#cpp)
     * [TypeScript](#typescript)
+    * [Rust](#Rust)
 - [Demo](#Demo)
     * [Local](#Local)
     * [GitHub](#GitHub)
@@ -38,7 +39,7 @@ Example .env file:
 PROBLEM_FOLDER="problems"
 PUSH_KEY="***[key from PushDeer]"
 COOKIE="***[cookie from LeetCode graphql]"
-LANGUAGES="python3,golang,java,cpp,typescript"
+LANGUAGES="python3,golang,java,cpp,typescript,rust"
 USER="himymben"
 ```
 
@@ -52,7 +53,7 @@ To directly submit Solution to LeetCode, try any language below:
 
 ```shell
 python python/scripts/submit.py -h
-# usage: submit.py [-h] [-id ID] {go,py,ts,js,c++,java,golang,python3,typescript,javascript,cpp}
+# usage: submit.py [-h] [-id ID] {go,py,ts,js,c++,java,golang,python3,typescript,javascript,cpp,rt,rust}
 python python/scripts/submit.py python3 -id=1
 python python/scripts/submit.py -id=2 py
 python python/scripts/submit.py py
@@ -60,6 +61,7 @@ python python/scripts/submit.py golang -id=2
 python python/scripts/submit.py cpp -id=1
 python python/scripts/submit.py java -id=2
 python python/scripts/submit.py typescript -id=1
+python python/scripts/submit.py rust -id=1
 ```
 
 To get any problem you want, try:
@@ -103,6 +105,10 @@ Check [Cpp README](cpp/README.md)
 ## Typescript
 
 Check [TypeScript README](typescript/README.md)
+
+## Rust
+
+Check [Rust README](rust/README.md)
 
 # Demo
 
@@ -211,6 +217,18 @@ add launch.json under `.vscode`
             "type": "node",
             "request": "launch",
             "preLaunchTask": "java-tests",
+        },
+        {
+            "name": "Rust Test",
+            "type": "node",
+            "request": "launch",
+            "preLaunchTask": "rust-test",
+        },
+        {
+            "name": "Rust Tests",
+            "type": "node",
+            "request": "launch",
+            "preLaunchTask": "rust-tests",
         }
     ]
 }
@@ -278,6 +296,18 @@ and tasks.json under `.vscode`
 			"label": "java-tests",
 			"command": "mvn",
 			"args": ["test", "-Dtest=\"qubhjava.test.ProblemsTest\""],
+			"type": "shell"
+		},
+        {
+			"label": "rust-test",
+			"command": "cargo",
+			"args": ["test", "--test", "solution_test"],
+			"type": "shell"
+		},
+		{
+			"label": "rust-tests",
+			"command": "cargo",
+			"args": ["test", "--test", "solutions_test"],
 			"type": "shell"
 		}
 	]

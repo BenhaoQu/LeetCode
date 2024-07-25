@@ -1,19 +1,42 @@
 package problems.problems_141;
 
+import com.alibaba.fastjson.JSON;
+import java.util.*;
+import qubhjava.BaseSolution;
+/**
+ * Definition for singly-linked list.
+ * class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) {
+ *         val = x;
+ *         next = null;
+ *     }
+ * }
+ */
 import qubhjava.models.ListNode;
 
-public class Solution {
+public class Solution extends BaseSolution {
     public boolean hasCycle(ListNode head) {
-        ListNode fast = head;
-        while(fast != null){
-            head = head.next;
-            if(fast.next != null)
-                fast = fast.next.next;
-            else
-                return false;
-            if(fast == head)
-                return true;
+        if (head == null) {
+            return false;
         }
-        return false;
+        ListNode slow = head, fast = head.next;
+        while (slow != fast) {
+            if (fast == null || fast.next == null) {
+                return false;
+            }
+            slow = slow.next;
+            fast = fast.next.next;
+        }
+        return true;
+    }
+
+    @Override
+    public Object solve(String[] inputJsonValues) {
+        int[] arr = jsonArrayToIntArray(inputJsonValues[0]);
+        int pos = Integer.parseInt(inputJsonValues[1]);
+        ListNode head = ListNode.IntArrayToLinkedListCycle(arr, pos);
+        return JSON.toJSON(hasCycle(head));
     }
 }

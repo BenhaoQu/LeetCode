@@ -1,5 +1,5 @@
 cc_test(
-    name = "test_problem_53",
+    name = "test_problem_49",
     size = "small",
     srcs = [
         "//cpp:TestMain.cpp",
@@ -19,23 +19,3 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "test_problem_101",
-    size = "small",
-    srcs = [
-        "//cpp:TestMain.cpp",
-        "//cpp:TestMain.h",
-        "//cpp/common:Solution.h",
-        "@problem1//:Solution.cpp"
-    ],
-    args = [
-        "$(rlocationpath @problem1//:testcase)",
-    ],
-    data = ["@problem1//:testcase"],
-    deps = [
-        "//cpp/models:models",
-        "@bazel_tools//tools/cpp/runfiles",
-        "@com_google_googletest//:gtest_main",
-        "@nlohmann_json//:json",
-    ],
-)

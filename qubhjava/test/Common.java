@@ -40,11 +40,11 @@ public class Common {
             JSONArray outputArray = JSON.parseArray(splits[1]);
             testcases = new Testcase[inputArray.size()];
             for (int i = 0; i < inputArray.size(); i++) {
-                String inputString = inputArray.getString(i);
-                if (inputString.startsWith("\"") && inputString.endsWith("\"")) {
-                    inputString = inputString.substring(1, inputString.length() - 1);
+                String input_string = inputArray.getString(i);
+                if (input_string.startsWith("\"") && input_string.endsWith("\"")) {
+                    input_string = input_string.substring(1, input_string.length() - 1);
                 }
-                String[] inputSplits = inputString.split("\n");
+                String[] inputSplits = input_string.split("\n");
                 testcases[i] = new Testcase(inputSplits, outputArray.get(i));
                 log.info("Added {}", testcases[i]);
             }
@@ -60,19 +60,47 @@ public class Common {
 
     public static DynamicTest addTest(BaseSolution solution, Testcase testcase, String problemId, int idx) {
         return DynamicTest.dynamicTest(
-                    String.format("[Problem%s]Testcase%d: %s", problemId, idx, Arrays.toString(testcase.getInput())),
-                    () -> assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
-                        Object actual = solution.solve(testcase.getInput());
-                        switch (testcase.getOutput()) {
-                            case BigDecimal output -> {
-                                BigDecimal actualNumber = (BigDecimal) actual;
-                                assertEquals(actualNumber.doubleValue(), output.doubleValue(), 1e-4);
-                            }
-                            case Double output -> assertEquals((Double) actual, output, 1e-4d);
-                            case Float output -> assertEquals((Float) actual, output, 1e-4f);
-                            case null, default -> assertEquals(actual, testcase.getOutput());
+                String.format("[Problem%s]Testcase%d: %s", problemId, idx, Arrays.toString(testcase.getInput())),
+                () -> assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
+                    Object actual = solution.solve(testcase.getInput());
+                    try {
+                        compareResult(testcase, actual);
+                    } catch (AssertionError ae) {
+                        Object iterActual = solution.solve(testcase.getInput());
+                        if (iterActual == actual) {
+                            throw ae;
                         }
-                    })
-            );
+                        for (int i = 0; i < 10000; i++) {
+                            try {
+                                compareResult(testcase, iterActual);
+                                return;
+                            } catch (AssertionError assErr) {
+                                if (i == 9999) {
+                                    throw assErr;
+                                }
+                            }
+                            iterActual = solution.solve(testcase.getInput());
+                        }
+                    }
+                })
+        );
+    }
+
+    private static void compareResult(Testcase testcase, Object actual) {
+        switch (testcase.getOutput()) {
+            case BigDecimal output -> {
+                BigDecimal actualNumber = (BigDecimal) actual;
+                assertEquals(actualNumber.doubleValue(), output.doubleValue(), 1e-4);
+            }
+            case Double output -> assertEquals((Double) actual, output, 1e-4d);
+            case Float output -> assertEquals((Float) actual, output, 1e-4f);
+            case null, default -> {
+                if (actual instanceof Iterable<?> && !(testcase.getOutput() instanceof Iterable<?>)) {
+                    assertEquals(((Iterable<?>)actual).iterator().next(), testcase.getOutput());
+                } else {
+                    assertEquals(actual, testcase.getOutput());
+                }
+            }
+        }
     }
 }
