@@ -1,5 +1,5 @@
 //
-// Created by 曲本豪 on 2024/5/21.
+// Created by BenHao on 2024/5/21.
 //
 
 #ifndef LEETCODECPP_LISTNODE_H
@@ -30,6 +30,6 @@ std::vector<int> &ListNodeToIntArray(ListNode *head);
 ListNode *IntArrayToListNodeCycle(std::vector<int> &arr, int pos);
 
 std::tuple<ListNode *, ListNode *>
-IntArrayToIntersectionListNode(std::vector<int> &arr1, std::vector<int> &arr2, int iv, int idxA, int idxB);
+IntArrayToIntersectionListNode(int iv, std::vector<int> &arr1, std::vector<int> &arr2, int idx_a, int idx_b);
 
 #endif //LEETCODECPP_LISTNODE_H
