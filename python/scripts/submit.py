@@ -74,6 +74,9 @@ async def main(root_path, problem_id: str, lang: str, cookie: str, problem_folde
             return
     lc_question_id = problem_info["questionId"]
     plans = lc_libs.get_user_study_plans(cookie)
+    if plans is None:
+        logging.error("Cookie might be expired, please check the cookie")
+        return
     result = None
     exists = False
     for i, plan in enumerate(plans):
@@ -90,8 +93,11 @@ async def main(root_path, problem_id: str, lang: str, cookie: str, problem_folde
     if not exists:
         result = await lc_libs.submit_code(root_path, problem_folder, problem_id, problem_slug, cookie, lang,
                                            lc_question_id, code)
-    logging.info("题解查看: https://leetcode.cn/problems/{}/solutions/".format(problem_slug))
-    logging.info("外网查看: https://leetcode.com/problems/{}/solutions/".format(problem_slug))
+    logging.info(f"题解查看: https://leetcode.cn/problems/{problem_slug}/solutions/")
+    logging.info(f"外网查看: https://leetcode.com/problems/{problem_slug}/solutions/")
+    san_ye_solution = lc_libs.get_answer_san_ye(problem_id, problem_slug)
+    if san_ye_solution:
+        logging.info(f"参考题解: {san_ye_solution}")
     return result
 
 
