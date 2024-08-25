@@ -6,7 +6,7 @@ var _ = require('lodash-contrib');
 const vm = require('node:vm');
 import {CompareResults} from "./common";
 
-const PROBLEM_ID: string = "3143";
+const PROBLEM_ID: string = "698";
 
 describe("TestMain===" + PROBLEM_ID, () => {
     dotenv.config();
@@ -22,7 +22,17 @@ describe("TestMain===" + PROBLEM_ID, () => {
     const splits: string[] = testcaseFileContent.split("\n");
     const inputs: string = splits[0], outputs: string = splits[1];
     const inputJson: any = JSON.parse(inputs), outputJson: any = JSON.parse(outputs);
+    expect(inputJson.length).toBeGreaterThan(0);
     let fileContent: string = fs.readFileSync(solPath, "utf-8");
+    let nodeClass: String = null;
+    for (const line of fileContent.split('\n')) {
+        if (line.startsWith("import ")) {
+            if (line.indexOf("typescript/models/node.") != -1) {
+                nodeClass = line.split(" as _Node")[0].split(",").pop().trim();
+                break;
+            }
+        }
+    }
     fileContent = fileContent.split('\n').filter(line => !line.trim().startsWith('import ')).join('\n');
     fileContent = fileContent.replace("export function Solve", "function Solve");
     fileContent += "const execResult = Solve(testInputJsonString);"
@@ -37,7 +47,7 @@ describe("TestMain===" + PROBLEM_ID, () => {
     const script = new vm.Script(r);
     for (let i: number = 0; i < inputJson.length; i++) {
         it("TestCase" + i, () => {
-            CompareResults(script, inputJson[i], outputJson[i]);
+            CompareResults(script, inputJson[i], outputJson[i], nodeClass);
         })
     }
 })

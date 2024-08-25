@@ -5,13 +5,14 @@ var _ = require('lodash-contrib');
 const vm = require('node:vm');
 import {CompareResults} from "./common";
 
-const PROBLEMS: string[][] = [['108', 'problems'], ['21', 'problems']];
+const PROBLEMS: string[][] = [['LCR_001', 'problems'], ['LCR_031', 'problems'], ['105', 'problems'], ['42', 'problems']];
 
 for (const [problemId, problemFolder] of PROBLEMS) {
     describe(`Test for problem ${problemId}`, () => {
         let inputJson: any;
         let outputJson: any;
         let script: any;
+        let nodeClass: String = null;
 
         beforeAll(async () => {
             let testCasePath = `${problemFolder}/${problemFolder}_${problemId}/testcase`;
@@ -27,6 +28,15 @@ for (const [problemId, problemFolder] of PROBLEMS) {
             inputJson = JSON.parse(inputs);
             outputJson = JSON.parse(outputs);
             let solutionFileContent: string = fs.readFileSync(solPath, "utf-8");
+            for (const line of solutionFileContent.split('\n')) {
+                if (line.startsWith("import ")) {
+                    // import {JSONArrayToNodeRandom,NodeRandom as _Node,NodeRandomToJSONArray} from "../../typescript/models/node.random";
+                    if (line.indexOf("typescript/models/node.") != -1) {
+                        nodeClass = line.split(" as _Node")[0].split(",").pop().trim();
+                        break;
+                    }
+                }
+            }
             solutionFileContent = solutionFileContent.split('\n').filter(line => !line.trim().startsWith('import ')).join('\n');
             solutionFileContent = solutionFileContent.replace("export function Solve", "function Solve");
             solutionFileContent += "const execResult = Solve(testInputJsonString);"
@@ -42,8 +52,9 @@ for (const [problemId, problemFolder] of PROBLEMS) {
 
         test(`Test solution ${problemId}`, () => {
             expect(script).toBeDefined();
+            expect(inputJson.length).toBeGreaterThan(0);
             for (let i: number = 0; i < inputJson.length; i++) {
-                CompareResults(script, inputJson[i], outputJson[i]);
+                CompareResults(script, inputJson[i], outputJson[i], nodeClass);
             }
         })
     });

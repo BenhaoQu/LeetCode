@@ -11,7 +11,7 @@ from utils import get_default_folder, timeout
 logging.basicConfig(level=logging.INFO, format=constants.LOGGING_FORMAT, datefmt=constants.DATE_FORMAT)
 
 # Question ID that wants to test, modify here as passing arguments
-QUESTIONS = [['108', 'problems'], ['21', 'problems']]
+QUESTIONS = [['LCR_001', 'problems'], ['LCR_031', 'problems'], ['105', 'problems'], ['42', 'problems']]
 
 
 class Test(unittest.TestCase):
@@ -47,10 +47,13 @@ class Test(unittest.TestCase):
                 testcase = module_from_spec(testcase_spec)
                 testcase_spec.loader.exec_module(testcase)
                 testcase_obj = testcase.Testcase()
+                if not testcase_obj.get_testcases():
+                    self.fail(f"No testcases found in [{q}] testcase.py")
 
                 for test in testcase_obj.get_testcases():
                     with self.subTest(f"testcase: {test}", testcase=test):
                         i, o = test
+                        logging.info("Testing problem: {}, input: {}".format(q, i))
                         try:
                             result = exec_solution(solution_obj, i)
                         except TimeoutError as _:

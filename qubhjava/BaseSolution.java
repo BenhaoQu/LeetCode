@@ -1,12 +1,13 @@
 package qubhjava;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import qubhjava.models.ListNode;
-import qubhjava.models.TreeNode;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+
+import qubhjava.models.ListNode;
+import qubhjava.models.TreeNode;
 
 
 public abstract class BaseSolution {
@@ -31,6 +32,55 @@ public abstract class BaseSolution {
             for (int j = 0; j < innerArray.size(); j++) {
                 result[i][j] = Integer.parseInt(innerArray.getString(j));
             }
+        }
+        return result;
+    }
+
+    protected long[] jsonArrayToLongArray(String jsonString) {
+        JSONArray jsonArray = JSON.parseArray(jsonString);
+        long[] result = new long[jsonArray.size()];
+        for (int i = 0; i < jsonArray.size(); i++) {
+            result[i] = Long.parseLong(jsonArray.getString(i));
+        }
+        return result;
+    }
+
+    protected long[][] jsonArrayToLong2DArray(String jsonString) {
+        JSONArray jsonArray = JSON.parseArray(jsonString);
+        long[][] result = new long[jsonArray.size()][];
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JSONArray innerArray = jsonArray.getJSONArray(i);
+            result[i] = new long[innerArray.size()];
+            for (int j = 0; j < innerArray.size(); j++) {
+                result[i][j] = Long.parseLong(innerArray.getString(j));
+            }
+        }
+        return result;
+    }
+
+    protected float[] jsonArrayToFloatArray(String jsonString) {
+        JSONArray jsonArray = JSON.parseArray(jsonString);
+        float[] result = new float[jsonArray.size()];
+        for (int i = 0; i < jsonArray.size(); i++) {
+            result[i] = Float.parseFloat(jsonArray.getString(i));
+        }
+        return result;
+    }
+
+    protected double[] jsonArrayToDoubleArray(String jsonString) {
+        JSONArray jsonArray = JSON.parseArray(jsonString);
+        double[] result = new double[jsonArray.size()];
+        for (int i = 0; i < jsonArray.size(); i++) {
+            result[i] = Double.parseDouble(jsonArray.getString(i));
+        }
+        return result;
+    }
+
+    protected boolean[] jsonArrayToBooleanArray(String jsonString) {
+        JSONArray jsonArray = JSON.parseArray(jsonString);
+        boolean[] result = new boolean[jsonArray.size()];
+        for (int i = 0; i < jsonArray.size(); i++) {
+            result[i] = Boolean.parseBoolean(jsonArray.getString(i));
         }
         return result;
     }
@@ -62,6 +112,19 @@ public abstract class BaseSolution {
         List<Integer> result = new ArrayList<>(jsonArray.size());
         for (int i = 0; i < jsonArray.size(); i++) {
             result.add(Integer.parseInt(jsonArray.getString(i)));
+        }
+        return result;
+    }
+
+    protected List<List<Integer>> jsonArrayTo2DIntList(String jsonString) {
+        JSONArray jsonArray = JSON.parseArray(jsonString);
+        List<List<Integer>> result = new ArrayList<>(jsonArray.size());
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JSONArray innerArray = jsonArray.getJSONArray(i);
+            result.add(new ArrayList<>(innerArray.size()));
+            for (int j = 0; j < innerArray.size(); j++) {
+                result.get(i).add(Integer.parseInt(innerArray.getString(j)));
+            }
         }
         return result;
     }

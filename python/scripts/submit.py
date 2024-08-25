@@ -22,7 +22,8 @@ _LANG_TRANS_MAP = {
 }
 
 
-async def main(root_path, problem_id: str, lang: str, cookie: str, problem_folder: str = None):
+async def main(root_path, problem_id: str, lang: str, cookie: str,
+               problem_folder: str = None, check_solution: bool = False):
     lang = _LANG_TRANS_MAP.get(lang.lower(), lang)
     load_code = False
     code = ""
@@ -74,6 +75,9 @@ async def main(root_path, problem_id: str, lang: str, cookie: str, problem_folde
             return
     lc_question_id = problem_info["questionId"]
     plans = lc_libs.get_user_study_plans(cookie)
+    if plans is None:
+        logging.error("Cookie might be expired, please check the cookie")
+        return
     result = None
     exists = False
     for i, plan in enumerate(plans):
@@ -90,8 +94,14 @@ async def main(root_path, problem_id: str, lang: str, cookie: str, problem_folde
     if not exists:
         result = await lc_libs.submit_code(root_path, problem_folder, problem_id, problem_slug, cookie, lang,
                                            lc_question_id, code)
-    logging.info("题解查看: https://leetcode.cn/problems/{}/solutions/".format(problem_slug))
-    logging.info("外网查看: https://leetcode.com/problems/{}/solutions/".format(problem_slug))
+    logging.info(f"题解查看: https://leetcode.cn/problems/{problem_slug}/solutions/")
+    logging.info(f"外网查看: https://leetcode.com/problems/{problem_slug}/solutions/")
+    if check_solution:
+        san_ye_solution = lc_libs.get_answer_san_ye(problem_id, problem_slug)
+        if san_ye_solution:
+            logging.info(f"参考题解: {san_ye_solution}")
+        else:
+            logging.warning(f"未找到参考题解")
     return result
 
 
@@ -100,6 +110,7 @@ if __name__ == '__main__':
     sys.path.insert(0, os.path.join(rp, "python"))
     parser = argparse.ArgumentParser()
     parser.add_argument("-id", required=False, type=str, help="The id of question to submit.", default="")
+    parser.add_argument("-solution", required=False, action="store_true", help="Check SanYe solution.")
     parser.add_argument("lang", choices=list(_LANG_TRANS_MAP.keys()) +
                                         ["java"] + list(_LANG_TRANS_MAP.values()))
     args = parser.parse_args()
@@ -123,5 +134,5 @@ if __name__ == '__main__':
         asyncio.set_event_loop(loop)
     else:
         loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(rp, format_question_id(question_id), args.lang, cke, pf))
+    loop.run_until_complete(main(rp, format_question_id(question_id), args.lang, cke, pf, args.solution))
     sys.exit(0)

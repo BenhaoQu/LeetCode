@@ -143,10 +143,9 @@ export function Solve(inputJsonElement: string): any {{
 }}
 """
 
-SOLUTION_TEMPLATE_RUST = """use serde_json::{{json, Value}};
+SOLUTION_TEMPLATE_RUST = """{}use serde_json::{{json, Value}};
 {}
-pub struct Solution;
-
+{}
 {}
 
 #[cfg(feature = "solution_{}")]

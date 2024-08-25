@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import random
+import re
 import shutil
 import sys
 import time
@@ -28,18 +29,18 @@ def __check_path__(problem_folder: str, problem_id: str, problem_slug: str, forc
     if os.path.exists(dir_path):
         if not force:
             logging.warning(f"Already exists problem [{problem_id}]{problem_slug}")
-            return None
+            return None, None
         if skip_language:
-            return dir_path
+            return root_path, dir_path
         shutil.rmtree(dir_path)
     os.makedirs(dir_path, exist_ok=True)
-    return dir_path
+    return root_path, dir_path
 
 
 def process_single_algorithm_problem(problem_folder: str, problem_id: str, problem_slug: str,
                                      problem_title: str, cookie: str, force: bool = False, skip_language: bool = False,
                                      languages=None):
-    dir_path = __check_path__(problem_folder, problem_id, problem_slug, force, skip_language)
+    root_path, dir_path = __check_path__(problem_folder, problem_id, problem_slug, force, skip_language)
     if not dir_path:
         return
     desc = get_question_desc(problem_slug, cookie)
@@ -69,9 +70,23 @@ def process_single_algorithm_problem(problem_folder: str, problem_id: str, probl
     outputs = extract_outputs_from_md(desc, is_chinese)
     logging.info(f"Load question_id: {problem_id}, test cases outputs: {outputs}")
     testcases, testcase_str = get_question_testcases(problem_slug)
-    if testcases is None:
+    if not testcases:
         logging.warning(f"Unable to fetch question testcases, [{problem_id}]{problem_slug}")
-        return
+        # try getting the original question slug
+        if "本题与主站" not in desc:
+            return
+        logging.debug("Try to get the original question slug")
+        match = re.search(r"https://(?:leetcode-cn\.com|leetcode\.cn)/problems/(.*?)/\"", desc)
+        if not match:
+            logging.debug("Failed to get the original question slug, %s", problem_id)
+            return
+        slug = match.group(1)
+        logging.debug(f"Found the original question slug: {slug}")
+        testcases, testcase_str = get_question_testcases(slug)
+        if not testcases:
+            logging.warning(f"Unable to fetch question testcases with origin, [{problem_id}]{problem_slug}")
+            return
+        logging.info(f"Load question_id from origin question: {slug}, test cases outputs: {testcases}")
     if not os.path.exists(f"{dir_path}/testcase.py"):
         with open(f"{dir_path}/testcase.py", "w", encoding="utf-8") as f:
             f.write(Python3Writer.write_testcase(testcases, outputs))
@@ -95,7 +110,7 @@ def process_single_algorithm_problem(problem_folder: str, problem_id: str, probl
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(obj.write_solution(val, None, problem_id, problem_folder))
             if isinstance(obj, lc_libs.RustWriter):
-                obj.write_cargo_toml(dir_path, problem_id)
+                obj.write_cargo_toml(root_path, dir_path, problem_folder, problem_id)
         except Exception as _:
             logging.error(f"Failed to write [{problem_id}] {key} solution", exc_info=True)
 
@@ -104,7 +119,7 @@ def process_single_algorithm_problem(problem_folder: str, problem_id: str, probl
 
 def process_single_database_problem(problem_folder: str, problem_id: str, problem_slug: str,
                                     problem_title: str, cookie: str, force: bool = False):
-    dir_path = __check_path__(problem_folder, problem_id, problem_slug, force)
+    _, dir_path = __check_path__(problem_folder, problem_id, problem_slug, force)
     if not dir_path:
         return
     desc = get_question_desc(problem_slug, cookie)

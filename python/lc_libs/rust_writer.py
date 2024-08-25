@@ -1,7 +1,8 @@
 import logging
 import os
+import re
 from collections import deque
-from typing import Tuple, List
+from typing import Tuple, List, Dict, Any
 
 from python.constants import CARGO_TOML_TEMPLATE_SOLUTION, SOLUTION_TEMPLATE_RUST, \
     SOLUTIONS_TEMPLATE_RUST
@@ -40,11 +41,9 @@ class RustWriter(LanguageWriter):
                 if line_idx < len(lines) - 1 or line:
                     f.write(f"{line}\n")
         root_cargo_path = os.path.join(root_path, self.cargo_file)
-        RustWriter.__cargo_add_problems(root_cargo_path, [[question_id, problem_folder]])
+        RustWriter.cargo_add_problems(root_cargo_path, [[question_id, problem_folder]])
 
     def change_tests(self, root_path, problem_ids_folders: list):
-        root_cargo_path = os.path.join(root_path, self.cargo_file)
-        RustWriter.__cargo_add_problems(root_cargo_path, problem_ids_folders)
         tests_file_path = os.path.join(root_path, self.main_folder, self.test_executor_folder, self.tests_file)
         with open(tests_file_path, "w", encoding="utf-8") as f:
             f.write(SOLUTIONS_TEMPLATE_RUST.format(
@@ -63,7 +62,16 @@ class RustWriter(LanguageWriter):
             problem_id: str = "",
             problem_folder: str = "",
     ) -> str:
+        add_title = ""
+        if not RustWriter.is_snake_case(f"{problem_folder}_{problem_id}"):
+            add_title = f"#![allow(non_snake_case)]\n"
         code = code or code_default
+        if "object will be instantiated and called as such:" in code:
+            struct_map = RustWriter._parse_rust_structs(code)
+            solve_part = RustWriter._generate_solve_function(struct_map)
+            return SOLUTION_TEMPLATE_RUST.format(add_title, "\n".join([]), "",
+                                                 code, problem_id, "\n\t".join(solve_part))
+
         if "impl Solution" not in code:
             raise NotImplementedError("RustWriter does not support problem without Solution yet!")
         if "impl Solution {\n\n    fn new(" in code:
@@ -73,7 +81,7 @@ class RustWriter(LanguageWriter):
         return_part = []
         fn_count = 0
         testcases = LanguageWriter.get_test_cases(problem_folder, problem_id)
-        for line in code.split("\n"):
+        for line in code_default.split("\n"):
             if line.startswith("//"):
                 continue
             if "fn " in line:
@@ -127,23 +135,33 @@ class RustWriter(LanguageWriter):
                             continue
                     self.__parse_type(i, var_name, var_type, code_default, import_libs, solve_part, return_part)
                     i += 1
+                logging.debug("variables: %s", variables)
+                format_variables = ", ".join([f"{v[1].split(' ')[0]} {v[0]}" if "mut" in v[1] or "&" in v[1]
+                                              else v[0] for v in variables])
                 if return_type:
                     self.__parse_type(0, "", return_type, code_default,
                                       import_libs, solve_part, return_part, True)
-                    return_part[-1] = return_part[-1].format(
-                        "Solution::{}({})".format(function_name, ", ".join([v[0] for v in variables]))
-                    )
+                    return_part[-1] = return_part[-1].format(f"Solution::{function_name}({format_variables})")
                 else:
-                    return_part.append("Solution::{}({});".format(function_name,
-                                                                  ", ".join([v[0] for v in variables])))
-                    return_part.append(variables[0][0])
+                    return_part.append(f"Solution::{function_name}({format_variables});")
+                    if "TreeNode" in variables[0][1]:
+                        RustWriter._add_to_import_libs(import_libs, "use library::lib::tree_node::", "tree_to_array")
+                        return_part.append(f"json!(tree_to_array({variables[0][0]}))")
+                    elif "ListNode" in variables[0][1]:
+                        RustWriter._add_to_import_libs(import_libs, "use library::lib::tree_node::", "list_node_to_int_array")
+                        return_part.append(f"json!(list_node_to_int_array({variables[0][0]}))")
+                    else:
+                        return_part.append(f"json!({variables[0][0]})")
                 fn_count += 1
         if fn_count != 1:
             raise NotImplementedError("RustWriter does not support multiple functions yet!")
         solve_part.extend(return_part)
-        return SOLUTION_TEMPLATE_RUST.format("\n".join(import_libs), code, problem_id, "\n\t".join(solve_part))
+        return SOLUTION_TEMPLATE_RUST.format(add_title, "\n".join(import_libs), "pub struct Solution;\n", code,
+                                             problem_id, "\n\t".join(solve_part))
 
-    def write_cargo_toml(self, dir_path, problem_id: str):
+    def write_cargo_toml(self, root_path, dir_path, problem_folder: str, problem_id: str):
+        root_cargo_path = os.path.join(root_path, self.cargo_file)
+        RustWriter.cargo_add_problems(root_cargo_path, [[problem_id, problem_folder]])
         cargo_file_path = os.path.join(dir_path, self.cargo_file)
         if not os.path.exists(cargo_file_path):
             with open(cargo_file_path, "w", encoding="utf-8") as f:
@@ -169,8 +187,9 @@ class RustWriter(LanguageWriter):
         with open(file_path, 'r', encoding="utf-8") as f:
             content = f.read()
             start = False
+            is_obj_question = "object will be instantiated and called as such:" in content
             for line in content.split("\n"):
-                if "pub struct Solution;" in line:
+                if (is_obj_question and "use serde_json::{json, Value};" in line) or "pub struct Solution;" in line:
                     start = True
                     continue
                 if "#[cfg(feature = \"solution\")]" in line or f"#[cfg(feature = \"solution_{problem_id}\")]" in line:
@@ -252,7 +271,7 @@ class RustWriter(LanguageWriter):
         :param is_return: bool
         """
         match var_type:
-            case "Option<Box<ListNode>>" | "Vec<Option<Box<ListNode>>>":
+            case "Option<Box<ListNode>>" | "Vec<Option<Box<ListNode>>>" | "&mut Option<Box<ListNode>>":
                 RustWriter._add_to_import_libs(import_libs, "use library::lib::list_node::", "ListNode")
                 if not is_return:
                     RustWriter._add_to_import_libs(import_libs, "use library::lib::list_node::",
@@ -279,7 +298,7 @@ class RustWriter(LanguageWriter):
                     else:
                         return_parts.append("json!(list_node_to_int_array(&{}))")
 
-            case "Option<Rc<RefCell<TreeNode>>>" | "Vec<Option<Rc<RefCell<TreeNode>>>>":
+            case "Option<Rc<RefCell<TreeNode>>>" | "Vec<Option<Rc<RefCell<TreeNode>>>>" | "&mut Option<Rc<RefCell<TreeNode>>>":
                 RustWriter._add_to_import_libs(import_libs, "use library::lib::tree_node::", "TreeNode")
                 if not is_return:
                     RustWriter._add_to_import_libs(import_libs, "use library::lib::tree_node::", "array_to_tree")
@@ -316,9 +335,9 @@ class RustWriter(LanguageWriter):
                         RustWriter._add_to_import_libs(import_libs, "use library::lib::node_neighbors::",
                                                        "array_to_node_neighbors")
                         solve_part.append(f"let input_vec{var_idx}: Vec<Vec<i32>> = serde_json::from_str("
-                                            f"&input_values[{var_idx}]).expect(\"Failed to parse input\");")
+                                          f"&input_values[{var_idx}]).expect(\"Failed to parse input\");")
                         solve_part.append(f"let {var_name}: Option<Rc<RefCell<Node>>> ="
-                                            f" array_to_node_neighbors(&input_vec{var_idx});")
+                                          f" array_to_node_neighbors(&input_vec{var_idx});")
                     else:
                         RustWriter._add_to_import_libs(import_libs, "use library::lib::node_neighbors::",
                                                        "node_neighbors_to_array")
@@ -344,12 +363,19 @@ class RustWriter(LanguageWriter):
                 if is_return:
                     return_parts.append("json!({})")
                 else:
+                    clean_type = var_type
+                    if "mut " in var_type:
+                        clean_type = var_type.replace("mut ", "")
+                        var_name = "mut " + var_name
+                    if "&" in var_type:
+                        clean_type = clean_type.replace("&", "")
+                    logging.debug("var_name: %s, var_type: %s, Clean type: %s", var_name, var_type, clean_type)
                     solve_part.append("let {}: {} = serde_json::from_str(&input_values[{}])"
                                       ".expect(\"Failed to parse input\");"
-                                      .format(var_name, var_type, var_idx))
+                                      .format(var_name, clean_type, var_idx))
 
     @staticmethod
-    def __cargo_add_problems(file_path, problem_ids_folders: list):
+    def cargo_add_problems(file_path, problem_ids_folders: list):
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         remain = set((problem_id, problem_folder) for problem_id, problem_folder in problem_ids_folders)
@@ -372,7 +398,7 @@ class RustWriter(LanguageWriter):
                         continue
                     if "rust/" not in line:
                         pf = line.split("/")[0].split("\"")[-1].strip()
-                        pi = line.split("_")[-1].split("\"")[0].strip()
+                        pi = "_".join(line.split("_")[1:]).split("\"")[0].strip()
                         if (pi, pf) in remain:
                             remain.remove((pi, pf))
                     f.write(line + "\n")
@@ -409,3 +435,94 @@ class RustWriter(LanguageWriter):
             import_libs[idx] = f"{crate}{{{', '.join(before)}}};"
         else:
             import_libs.append(f"{crate}{{{fn}}};")
+
+    @staticmethod
+    def _parse_rust_structs(code: str) -> Dict[str, List[Tuple[str, str, str]]]:
+        # Regex to find all struct names and their methods
+        struct_matches = re.findall(r'struct\s+(\w+)\s*{', code)
+        methods = re.findall(r'impl\s+(\w+)\s*{([^}]*)}', code)
+
+        struct_methods = {}
+        for struct_name in struct_matches:
+            struct_methods[struct_name] = []
+
+        for struct_name, method_block in methods:
+            matches = re.findall(r'fn\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*([^{]*))?\s*{', code)
+            logging.debug("Regex matches: %s", matches)
+            struct_methods[struct_name].extend(
+                [(name, params.strip(), return_type.strip()) for name, params, return_type in matches])
+
+        return struct_methods
+
+    @staticmethod
+    def _generate_solve_function(struct_methods: Dict[str, List[Tuple[str, str, str]]]) -> List[str]:
+        logging.debug(f"Struct methods: {struct_methods}")
+        solve_lines = ["let operators: Vec<String> = serde_json::from_str(&input_values[0])"
+                       ".expect(\"Failed to parse input\");",
+                       "let op_values: Vec<Vec<Value>> = serde_json::from_str(&input_values[1])"
+                       ".expect(\"Failed to parse input\");"]
+        for struct_name, methods in struct_methods.items():
+            method_param_names: List[Any] = []
+            for method, params, return_type in methods:
+                if method == "new":
+                    if not params:
+                        solve_lines.append(f"let mut obj = {struct_name}::new();")
+                        continue
+                    i = 0
+                    for param in params.split(","):
+                        if param == "&self" or param == "&mut self":
+                            continue
+                        if not param:
+                            logging.debug(f"Empty param in {struct_name} new method")
+                            continue
+                        param_name, param_type = param.split(':')
+                        solve_lines.append(f"let {param_name.strip()}_obj: {param_type.strip()} = serde_json::"
+                                           f"from_value(op_values[0][{i}].clone()).expect(\"Failed to parse input\");")
+                        i += 1
+                    solve_lines.append(f"let mut obj = {struct_name}::new({', '.join(
+                        [param.split(':')[0].strip() + '_obj' for param in params.split(',')])});")
+                    continue
+                method_param_names.append([method, return_type])
+                for param in params.split(","):
+                    if param == "&self" or param == "&mut self":
+                        continue
+                    if not param:
+                        logging.debug(f"Empty param in {struct_name} {method} method")
+                        continue
+                    param_name, param_type = param.split(':')
+                    method_param_names[-1].append((param_name.strip(), param_type.strip()))
+            solve_lines.append("let mut ans = vec![None];")
+            solve_lines.append("for i in 1..operators.len() {")
+            solve_lines.append("\tmatch operators[i].as_str() {")
+            logging.debug(f"Method param names: {method_param_names}")
+            for method_params in method_param_names:
+                method_name = method_params[0]
+                return_type = method_params[1]
+                splits = method_name.split("_")
+                test_case_method_name = method_name
+                if len(splits) > 1:
+                    test_case_method_name = "".join([splits[0]] + [s.capitalize() for s in splits[1:]])
+                solve_lines.append(f"\t\t\"{test_case_method_name}\" => {{")
+                for j, (param_name, param_type) in enumerate(method_params[2:]):
+                    solve_lines.append(f"\t\t\tlet {param_name}: {param_type} = serde_json::"
+                                       f"from_value(op_values[i][{j}].clone()).expect(\"Failed to parse input\");")
+                if return_type == "":
+                    solve_lines.append(f"\t\t\tobj.{method_name}("
+                                       f"{', '.join([param[0] for param in method_params[2:]])});")
+                    solve_lines.append("\t\t\tans.push(None);")
+                    solve_lines.append("\t\t},")
+                else:
+                    solve_lines.append(
+                        f"\t\t\tans.push(Some(obj.{method_name}("
+                        f"{', '.join([param[0] for param in method_params[2:]])})));")
+                    solve_lines.append("\t\t},")
+            solve_lines.append("\t\t_ => ans.push(None),")
+            solve_lines.append("\t}")
+            solve_lines.append("}")
+            solve_lines.append("json!(ans)")
+        return solve_lines
+
+    @staticmethod
+    def is_snake_case(s: str) -> bool:
+        pattern = r'^[a-z0-9]+(_[a-z0-9]+)*$'
+        return bool(re.match(pattern, s))
