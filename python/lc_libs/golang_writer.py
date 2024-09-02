@@ -193,10 +193,10 @@ class GolangWriter(LanguageWriter):
                     code or code_default,
                     build_body,
                     "",
-                    "ans",
                     "",
+                    "ans",
                     "\n\n" + end_extra_code if end_extra_code else "",
-                ).replace("return ans()", "return ans")
+                )
         import_set = set()
         for it in its:
             import_set.update(it[0])
@@ -211,23 +211,31 @@ class GolangWriter(LanguageWriter):
             return_func_var = "{}({})".format(
                 func_names[0], ", ".join(list(zip(*its))[3])
             )
+            special_return_process = ""
             match rts[0]:
                 case "*TreeNode":
                     import_set.add('\t. "leetCode/golang/models"')
-                    return_func_name = "TreeToArray"
+                    return_line = f"TreeToArray({return_func_var})"
                 case "*ListNode":
-                    import_set.add('\t. "leetCode/golang/models"')
-                    return_func_name = "LinkedListToIntArray"
+                    if "IntArrayToLinkedListCycle" in "".join(list(zip(*its))[2]):
+                        logging.debug(return_func_var)
+                        special_return_process = (f"res := {return_func_var}\n"
+                                                  f"\tif res == nil {{\n"
+                                                  f"\t\treturn nil\n"
+                                                  f"\t}}\n\t")
+                        return_line = "res.Val"
+                    else:
+                        import_set.add('\t. "leetCode/golang/models"')
+                        return_line = f"LinkedListToIntArray({return_func_var})"
                 case "*Node":
-                    return_func_name = "ToBeImplemented"
                     if (
                             "Left *Node" in code_default
                             and "Right *Node" in code_default
                             and "Next *Node" in code_default
                     ):
-                        return_func_name = "TreeNextToArray"
+                        return_line = f"TreeNextToArray({return_func_var})"
                     elif "Neighbors []*Node" in code_default:
-                        return_func_name = "NodeNeighbourToArrayRelation"
+                        return_line = f"NodeNeighbourToArrayRelation({return_func_var})"
                     elif (
                             "/**\n"
                             " * Definition for a Node.\n"
@@ -238,9 +246,11 @@ class GolangWriter(LanguageWriter):
                             " * }\n"
                             " */" in code_default
                     ):
-                        return_func_name = "NodeArrayToIntRandomArray"
+                        return_line = f"NodeArrayToIntRandomArray({return_func_var})"
+                    else:
+                        return_line = f"FIXME({return_func_var})"
                 case _:
-                    return_func_name = ""
+                    return_line = return_func_var
 
             return SOLUTION_TEMPLATE_GOLANG.format(
                 problem_id,
@@ -256,8 +266,8 @@ class GolangWriter(LanguageWriter):
                 code or code_default,
                 "\n".join(list(zip(*its))[1]),
                 "\n".join(list(zip(*its))[2]),
-                return_func_name,
-                return_func_var,
+                special_return_process,
+                return_line,
                 "\n\n" + end_extra_code if end_extra_code else "",
             )
         if rts[0] == "":
@@ -298,8 +308,8 @@ class GolangWriter(LanguageWriter):
             code or code_default,
             "\n".join(list(zip(*its))[1]),
             "\n".join(list(zip(*its))[2]),
-            func_names[0],
-            ", ".join(list(zip(*its))[3]),
+            "",
+            func_names[0] + "(" + ", ".join(list(zip(*its))[3]) + ")",
             "\n\n" + end_extra_code if end_extra_code else "",
         )
 
@@ -392,6 +402,7 @@ class GolangWriter(LanguageWriter):
         list_type_vars_new: List[List] = []
         total_vars = 0
         for vars_type in list_type_vars:
+            logging.debug("Vars type: %s", vars_type)
             if list_type_vars_new and list_type_vars_new[-1][-1] == vars_type[-1]:
                 list_type_vars_new[-1] = list_type_vars_new[-1][:-1]
                 list_type_vars_new[-1].extend(vars_type)
@@ -400,6 +411,7 @@ class GolangWriter(LanguageWriter):
             total_vars += len(vars_type) - 1
         logging.debug("Total vars: %d", total_vars)
         list_type_vars = list_type_vars_new
+        logging.debug("List type vars: %s", list_type_vars)
         counts = 0
         if struct_func:
             variables = []
@@ -538,6 +550,7 @@ class GolangWriter(LanguageWriter):
                     case "*TreeNode":
                         imports_libs.add('\t. "leetCode/golang/models"')
                         if testcases:
+                            logging.debug(f"Testcases: {testcases}, variables: {vrs}")
                             if total_vars == len(testcases[0]) + 1:
                                 imports_libs.add('\t"encoding/json"')
                                 imports_libs.add('\t"log"')
@@ -552,7 +565,7 @@ class GolangWriter(LanguageWriter):
                                 json_parse.append(f"\t{vrs[1]} = ArrayToTree(inputValues[0])\n")
                                 count += len(vrs)
                                 continue
-                            elif total_vars > 1 and any(t is not None and not isinstance(t, list)
+                            elif total_vars > 1 and len(list_type_vars) == 1 and any(t is not None and not isinstance(t, list)
                                                         for testcase in testcases for t in testcase):
                                 imports_libs.add('\t"encoding/json"')
                                 imports_libs.add('\t"log"')

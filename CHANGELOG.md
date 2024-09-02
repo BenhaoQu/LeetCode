@@ -1,174 +1,88 @@
 # CHANGELOG
 
-## v8.5.0 (2024-08-28)
-
-### Feature
-
-* feat: typescript custom class
-
-implement general methods ([`7ac717f`](https://github.com/QuBenhao/LeetCode/commit/7ac717f77f6abc21cc8d3712f4aab8ad338712d1))
-
-* feat: Java custom class
-
-implement general methods ([`907dda8`](https://github.com/QuBenhao/LeetCode/commit/907dda8856e06cf87d31b2a81a0aaf3ce0c7eb4e))
-
-* feat: Java custom class
-
-init ([`257bb5b`](https://github.com/QuBenhao/LeetCode/commit/257bb5bf87843a57f5b2a3b2b8d90d63405a6c4c))
-
-* feat: c++ custom class
-
-code generator ([`89a3e49`](https://github.com/QuBenhao/LeetCode/commit/89a3e49586b7d7ba48ae4da5ff9a955a91e33d19))
-
-* feat: c++ custom class
-
-init solution add to include_path ([`e5600b6`](https://github.com/QuBenhao/LeetCode/commit/e5600b6d669f44e2f183401425ae632f2145b1ff))
-
-* feat: golang custom class
-
-add class at end with constructor to be solved ([`6ba6205`](https://github.com/QuBenhao/LeetCode/commit/6ba6205a52e76fd7692d298c11b54879970c1a22))
-
-* feat: rust submit
-
-general code, between solution or use json and feature ([`131c284`](https://github.com/QuBenhao/LeetCode/commit/131c284fb660d414dd45e33b0c8ee797a840a66a))
-
-* feat: Java submit
-
-general code, between Solution and solve method or before Solution class and after import ([`dc02d62`](https://github.com/QuBenhao/LeetCode/commit/dc02d6289a1f038294405af62e7aba876d0d7310))
-
-* feat: python submit
-
-general after class Solution ([`f26fa77`](https://github.com/QuBenhao/LeetCode/commit/f26fa770c2b01673c1a100bfe2c06b6c94e6cb17))
-
-### Test
-
-* test: try release
-
-python Semantic Release ([`bbfe250`](https://github.com/QuBenhao/LeetCode/commit/bbfe250842e8bbcb787bdc079077b8efdf57043f))
-
-* test: rust 3144, 131, LCR 008
-
-solution ([`3768a50`](https://github.com/QuBenhao/LeetCode/commit/3768a50cedbb27609cfc48c41134aee5f3e45765))
-
-* test: typescript 3144, 131, LCR 008
-
-solution ([`e8631d6`](https://github.com/QuBenhao/LeetCode/commit/e8631d6b5010a05996688885c87b11648a01f309))
-
-* test: Java 3144, 131, LCR 008
-
-solution ([`1d00a7d`](https://github.com/QuBenhao/LeetCode/commit/1d00a7d95008799e92ada8f4221a7d20b9501e8d))
-
-* test: c++ 3144, 131, LCR 008
-
-solution ([`b619423`](https://github.com/QuBenhao/LeetCode/commit/b6194236995e3f9c49dddb22c19bfce29b94d106))
-
-* test: golang 3144, 131, LCR 008
-
-solution ([`10b062c`](https://github.com/QuBenhao/LeetCode/commit/10b062c61b099f8945357ef777998bf962aa2882))
-
-* test: python 3144, 131, LCR 008
-
-solution ([`65b9e5c`](https://github.com/QuBenhao/LeetCode/commit/65b9e5cf69147ac7cb1d5b4cccad82b959eccd9b))
-
-* test: [20240828] Add daily LeetCode problem ([`4f08743`](https://github.com/QuBenhao/LeetCode/commit/4f08743aa3f2240026aa2f7b3f59cbe156b08de8))
-
-* test: rust 3134, 208, LCR 068
-
-solution ([`011ff53`](https://github.com/QuBenhao/LeetCode/commit/011ff530266d266c754fce064eeda01acfa43d3f))
-
-* test: typescript 3134, 208, LCR 068
-
-solution ([`2a99032`](https://github.com/QuBenhao/LeetCode/commit/2a9903277915bc3ca39ed048d7effd8d08e2909e))
-
-* test: Java 3134, 208, LCR 068
-
-solution ([`20e18dc`](https://github.com/QuBenhao/LeetCode/commit/20e18dc9c8561d08fcf5f779b8b3e49dee415d48))
-
-* test: c++ 3134, 208, LCR 068
-
-solution ([`2a0b8cb`](https://github.com/QuBenhao/LeetCode/commit/2a0b8cbe80ee16d8e2f35932c5aa3809aad45a66))
-
-* test: golang 3134, 208, LCR 068
-
-solution ([`0f65b8c`](https://github.com/QuBenhao/LeetCode/commit/0f65b8c7e813f736eaf60a506c693ffbc6b6e036))
-
-* test: python 3134, 208, LCR 068
-
-solution ([`d68cf12`](https://github.com/QuBenhao/LeetCode/commit/d68cf123ef45ad4f979c8a66a4c58365bc1a8732))
-
-* test: [20240827] Add daily LeetCode problem ([`4202000`](https://github.com/QuBenhao/LeetCode/commit/42020009849a0b3ad9d34e8b9b8deb030a203400))
-
-* test: rust 240, LCR 042
-
-solution ([`5f5fb60`](https://github.com/QuBenhao/LeetCode/commit/5f5fb60c276aa521908f918a5d117758ba04730e))
-
-### Unknown
-
-* Merge pull request #132 from QuBenhao/131-custom-class-690
-
-131 custom class 690 ([`1ff1c42`](https://github.com/QuBenhao/LeetCode/commit/1ff1c42c292607429e5a80c0f5dfb533b38a3b5e))
-
-## v8.4.1 (2024-08-26)
+## v8.7.10 (2024-09-01)
 
 ### Fix
 
-* fix: rust language code not exist
+* fix: rust timeout check
 
-do not add rust Cargo since it does not exist ([`3b599b4`](https://github.com/QuBenhao/LeetCode/commit/3b599b422f9586b292c375cf70808bf7af120d60))
+check type of TimeoutError, disconnected means thread panic, timeout means timeout ([`5a08c92`](https://github.com/QuBenhao/LeetCode/commit/5a08c92e3065d76ce3d2640dab34b97e2df6630f))
 
 ### Test
 
-* test: typescript 690, 240
+* test: rust 2024, 72, LCR 037
 
-solution ([`ca746b4`](https://github.com/QuBenhao/LeetCode/commit/ca746b420047c64fe1aca48f770884be4e84a5f3))
+solution ([`eed0898`](https://github.com/QuBenhao/LeetCode/commit/eed089861095a2ecc4edfe5553f8ab1fe6db23b0))
 
-* test: java 690, 240, LCR 042
+* test: typescript 2024, 72, LCR 037
 
-solution ([`7343184`](https://github.com/QuBenhao/LeetCode/commit/73431848fa17e5e1e529a7af87adcbdb318a14b9))
+solution ([`cff7387`](https://github.com/QuBenhao/LeetCode/commit/cff7387cdf55fab82849c2a317955c7199df775a))
 
-* test: c++ 690, 240, LCR 042
+* test: Java 2024, 72, LCR 037
 
-solution ([`3cae17e`](https://github.com/QuBenhao/LeetCode/commit/3cae17eeae8d739ff62542fbdc72c47e43c7dde5))
+solution ([`92890b6`](https://github.com/QuBenhao/LeetCode/commit/92890b6607ddc18bed9c2c009a0c150785b9dda8))
 
-## v8.4.0 (2024-08-26)
+* test: c++ 2024, 72, LCR 037
 
-### Documentation
+solution ([`026360b`](https://github.com/QuBenhao/LeetCode/commit/026360b0da97a5d1a589cfa8327640297ff3871f))
 
-* docs: update README.md
+* test: golang 2024, 72, LCR 037
 
-add github actions ([`4146653`](https://github.com/QuBenhao/LeetCode/commit/41466535520442bcf18351b4877cd36635c6f875))
+solution ([`3f99ad5`](https://github.com/QuBenhao/LeetCode/commit/3f99ad597c1f49b0f21f8c15e7238564cec72036))
 
-### Feature
+* test: python 2024, 72, LCR 037
 
-* feat: cpp submit code
+solution ([`b8f4094`](https://github.com/QuBenhao/LeetCode/commit/b8f4094a0b6acad0b4cf2589ffe747a0437ff855))
 
-content between json ([`ec0e026`](https://github.com/QuBenhao/LeetCode/commit/ec0e026fbb34dc2b9b4eeb5e772a1815ef6c30dc))
+* test: [20240902] Add daily LeetCode problem ([`a9db8a7`](https://github.com/QuBenhao/LeetCode/commit/a9db8a7561a9397e21f6dd016fd4d9263f6082bd))
+
+* test: rust 1450, 84, 416, LCR 063
+
+solution ([`a5025ee`](https://github.com/QuBenhao/LeetCode/commit/a5025eedc6c6091a1e0ce55389260f8e5c5fb027))
+
+* test: typescript 1450, 84, 416, LCR 022, LCR 063
+
+solution ([`fa9dd67`](https://github.com/QuBenhao/LeetCode/commit/fa9dd6704df8960aae85d351574d4a329daeb640))
+
+* test: Java 1450, 84, 416, LCR 022, LCR 063
+
+solution ([`56809ba`](https://github.com/QuBenhao/LeetCode/commit/56809ba7c7f3e105e8375cee2369ffa1203fa014))
+
+* test: c++ 1450, 84, 416, LCR 022, LCR 063
+
+solution ([`e006ce9`](https://github.com/QuBenhao/LeetCode/commit/e006ce9dc505bf0a9780453a00a2c75abf6e1bf3))
+
+* test: golang 1450, 84, 416, LCR 022, LCR 063
+
+solution ([`7e50c8e`](https://github.com/QuBenhao/LeetCode/commit/7e50c8efb7eeec3552f2932d1f6f060ab47eea6b))
+
+## v8.7.9 (2024-09-01)
 
 ### Fix
 
-* fix: breaking change
+* fix: ListNode with cycle return
 
-without &#34;&#34; ([`26f191e`](https://github.com/QuBenhao/LeetCode/commit/26f191e09492885d2867a1e24fa4fbdeb5705ec9))
+cannot convert ListNode with cycle to a standard array, return it&#39;s value. ([`5994d12`](https://github.com/QuBenhao/LeetCode/commit/5994d1245edda60522c772d7b1f7be74267d235a))
+
+## v8.7.8 (2024-08-31)
+
+### Fix
+
+* fix: add test problem in languages
+
+Even it was solved with the language before, keep adding it to daily problems or plans ([`139b134`](https://github.com/QuBenhao/LeetCode/commit/139b1342d1f5e1278bdc67736513eb9103823737))
 
 ### Test
 
-* test: golang 690, 240, LCR 042
+* test: python 1450, 84, 416, LCR 022, LCR 063
 
-solution ([`add48c0`](https://github.com/QuBenhao/LeetCode/commit/add48c08e2cbb243a735a3e4680d64cb365d7691))
+solution ([`e30476c`](https://github.com/QuBenhao/LeetCode/commit/e30476c95ce99eb2973c076431deb819c90b40c5))
 
-* test: python 690, 240, LCR 042
+* test: [20240901] Add daily LeetCode problem ([`39910d8`](https://github.com/QuBenhao/LeetCode/commit/39910d8650107bfb56e8b20d89d00116b8b92f13))
 
-solution ([`df44360`](https://github.com/QuBenhao/LeetCode/commit/df4436077508a97637f3b76cb1af4582b872da36))
+* test: [20240831] Add daily problem solution ([`227fbec`](https://github.com/QuBenhao/LeetCode/commit/227fbec81860c23efb92694ce199dd5dbd470221))
 
-* test: [20240826] Add daily LeetCode problem ([`a13dd90`](https://github.com/QuBenhao/LeetCode/commit/a13dd90a35158819d8ee6a92d5d38636701ae007))
-
-### Unknown
-
-* Revert &#34;fix: breaking change&#34;
-
-This reverts commit 26f191e09492885d2867a1e24fa4fbdeb5705ec9. ([`4bbf7fe`](https://github.com/QuBenhao/LeetCode/commit/4bbf7fe7fcdfd0dfcc3507af2557d5ba13335793))
-
-## v8.3.1 (2024-08-25)
+## v8.7.7 (2024-08-31)
 
 ### Breaking
 
@@ -185,6 +99,14 @@ Init auto run golang
 BREAKING CHANGE: Support for golang ([`85a1fee`](https://github.com/QuBenhao/LeetCode/commit/85a1fee2453160d89cb21e94e51dac058fc9b1d0))
 
 ### Documentation
+
+* docs: update README.md
+
+workflow for release note ([`7be1f2f`](https://github.com/QuBenhao/LeetCode/commit/7be1f2f54ef3b90ae9cb0d03de21bfe5b9007d3b))
+
+* docs: update README.md
+
+add github actions ([`4146653`](https://github.com/QuBenhao/LeetCode/commit/41466535520442bcf18351b4877cd36635c6f875))
 
 * docs: update README.md
 
@@ -281,6 +203,54 @@ latest ([`050396a`](https://github.com/QuBenhao/LeetCode/commit/050396aef9132d82
 README.md ([`77f8ea7`](https://github.com/QuBenhao/LeetCode/commit/77f8ea7df735d30f865ca5fa7fd51a8c506a0eb3))
 
 ### Feature
+
+* feat: try remove older tag
+
+clean up older tags and releases ([`6301925`](https://github.com/QuBenhao/LeetCode/commit/63019253800480a3e2ae99fb629711aa3bb64aae))
+
+* feat: clang-format
+
+try cpp format file ([`3e2f884`](https://github.com/QuBenhao/LeetCode/commit/3e2f8849cc3abbd347e53bc4d3ae5042d98379cf))
+
+* feat: typescript custom class
+
+implement general methods ([`7ac717f`](https://github.com/QuBenhao/LeetCode/commit/7ac717f77f6abc21cc8d3712f4aab8ad338712d1))
+
+* feat: Java custom class
+
+implement general methods ([`907dda8`](https://github.com/QuBenhao/LeetCode/commit/907dda8856e06cf87d31b2a81a0aaf3ce0c7eb4e))
+
+* feat: Java custom class
+
+init ([`257bb5b`](https://github.com/QuBenhao/LeetCode/commit/257bb5bf87843a57f5b2a3b2b8d90d63405a6c4c))
+
+* feat: c++ custom class
+
+code generator ([`89a3e49`](https://github.com/QuBenhao/LeetCode/commit/89a3e49586b7d7ba48ae4da5ff9a955a91e33d19))
+
+* feat: c++ custom class
+
+init solution add to include_path ([`e5600b6`](https://github.com/QuBenhao/LeetCode/commit/e5600b6d669f44e2f183401425ae632f2145b1ff))
+
+* feat: golang custom class
+
+add class at end with constructor to be solved ([`6ba6205`](https://github.com/QuBenhao/LeetCode/commit/6ba6205a52e76fd7692d298c11b54879970c1a22))
+
+* feat: rust submit
+
+general code, between solution or use json and feature ([`131c284`](https://github.com/QuBenhao/LeetCode/commit/131c284fb660d414dd45e33b0c8ee797a840a66a))
+
+* feat: Java submit
+
+general code, between Solution and solve method or before Solution class and after import ([`dc02d62`](https://github.com/QuBenhao/LeetCode/commit/dc02d6289a1f038294405af62e7aba876d0d7310))
+
+* feat: python submit
+
+general after class Solution ([`f26fa77`](https://github.com/QuBenhao/LeetCode/commit/f26fa770c2b01673c1a100bfe2c06b6c94e6cb17))
+
+* feat: cpp submit code
+
+content between json ([`ec0e026`](https://github.com/QuBenhao/LeetCode/commit/ec0e026fbb34dc2b9b4eeb5e772a1815ef6c30dc))
 
 * feat: try version action
 
@@ -1139,6 +1109,52 @@ The code refactors the way TreeNodes are converted to arrays and vice versa in G
 Generate linkedList from int array or the opposite, as well as basic test for linkedList ([`72fde28`](https://github.com/QuBenhao/LeetCode/commit/72fde2896de1d2cac24ed03d5aaac71a7d8dcf55))
 
 ### Fix
+
+* fix: compare zero and negative zero
+
+convert result to JSON to eliminate negative zero ([`0cc32a9`](https://github.com/QuBenhao/LeetCode/commit/0cc32a97721f34639fee3a50470cb316ddcbeff6))
+
+* fix: golang mismatch TreeNode and int
+
+TreeNodeWithTarget applies only when all treated as TreeNode. 437 is a normal TreeNode problem ([`ce20864`](https://github.com/QuBenhao/LeetCode/commit/ce208644228630c170c8c27a1e7762b8a1cf4752))
+
+* fix: clean draft release
+
+try action ([`d3fc403`](https://github.com/QuBenhao/LeetCode/commit/d3fc4034fc26396efe8231b9ef5567f27f8ef2fc))
+
+* fix: clean draft release
+
+use name ([`ff7e015`](https://github.com/QuBenhao/LeetCode/commit/ff7e015d5d4c7b0203cd4397d045038593e1d016))
+
+* fix: clean draft release
+
+use tagName ([`89c5c3f`](https://github.com/QuBenhao/LeetCode/commit/89c5c3f2e1dcb952276e5ed37ab67ba024accfcb))
+
+* fix: clean tag only
+
+as well as draft release ([`9be1c45`](https://github.com/QuBenhao/LeetCode/commit/9be1c458e0c9820cceec9d030867853bf42e24a2))
+
+* fix: no release exist
+
+tag related release ([`db57ce8`](https://github.com/QuBenhao/LeetCode/commit/db57ce86a00454cbbe7c9ba8335177933460670d))
+
+* fix: do not run submit
+
+when no solution ([`237984c`](https://github.com/QuBenhao/LeetCode/commit/237984cd9ba25247192c4354a14beff4e91d312b))
+
+* fix: only one workflow at a time ([`a9dfbf4`](https://github.com/QuBenhao/LeetCode/commit/a9dfbf434b4c15e40f4cb11b85cb0318785626c2))
+
+* fix: python submit
+
+object question should not have Solution class ([`e25ce18`](https://github.com/QuBenhao/LeetCode/commit/e25ce1867bdf08b5d5fe43100ce8b3f9868ac582))
+
+* fix: rust language code not exist
+
+do not add rust Cargo since it does not exist ([`3b599b4`](https://github.com/QuBenhao/LeetCode/commit/3b599b422f9586b292c375cf70808bf7af120d60))
+
+* fix: breaking change
+
+without &#34;&#34; ([`26f191e`](https://github.com/QuBenhao/LeetCode/commit/26f191e09492885d2867a1e24fa4fbdeb5705ec9))
 
 * fix: action env
 
@@ -2342,6 +2358,10 @@ fix case with space and output with space ([`96434b2`](https://github.com/QuBenh
 
 ### Refactor
 
+* refactor: format
+
+typo ([`17d5322`](https://github.com/QuBenhao/LeetCode/commit/17d5322d0b9499f3537d09fda32df551854e8517))
+
 * refactor: rust lib
 
 better code ([`a8b581f`](https://github.com/QuBenhao/LeetCode/commit/a8b581f988c48e7d047035a8a24187b3f4216582))
@@ -2475,6 +2495,164 @@ query param load from str ([`576737d`](https://github.com/QuBenhao/LeetCode/comm
 go.sum uploaded ([`064618d`](https://github.com/QuBenhao/LeetCode/commit/064618d550530aefd4c12eeb3a8d7d3e328cf9f0))
 
 ### Test
+
+* test: rust 3127, 238, 437, LCR 090, LCR 105
+
+solution ([`5964ec1`](https://github.com/QuBenhao/LeetCode/commit/5964ec1bc8cd2f56db181ced524c1576e4b32566))
+
+* test: typescript 3127, 238, 437, LCR 090, LCR 105
+
+solution, bug 0 and -0 not equal in 238 ([`e3656d3`](https://github.com/QuBenhao/LeetCode/commit/e3656d3e72988197438f04ea2dfe86daf0ebbdbf))
+
+* test: Java 3127, 238, 437, LCR 090, LCR 105
+
+solution ([`c7eebf0`](https://github.com/QuBenhao/LeetCode/commit/c7eebf0788400058e7686a173bcc49655e3e871f))
+
+* test: c++ 3127, 238, 437, LCR 090, LCR 105
+
+solution ([`30f50d8`](https://github.com/QuBenhao/LeetCode/commit/30f50d8664abccaf90c3a4ceb331262e71c3946c))
+
+* test: golang 3127, 238, 437, LCR 090, LCR 105
+
+solution ([`2017d08`](https://github.com/QuBenhao/LeetCode/commit/2017d08aa4ad5a6b139752d39187f31f4dd01a3f))
+
+* test: python 3127, 238, 437, LCR 090, LCR 105
+
+solution ([`9112847`](https://github.com/QuBenhao/LeetCode/commit/9112847525e936adc45e9bbc1819a3b335eba4ac))
+
+* test: [20240831] Add daily LeetCode problem ([`957fab2`](https://github.com/QuBenhao/LeetCode/commit/957fab2bfc18472d061180868211dd33c71c706b))
+
+* test: rust LCR 048
+
+solution ([`885ad0e`](https://github.com/QuBenhao/LeetCode/commit/885ad0e7a39da8f13e7f5227752f7124626124d9))
+
+* test: LCR_048 fix problem
+
+remain todo solution ([`d81fc1d`](https://github.com/QuBenhao/LeetCode/commit/d81fc1da0e285c18d48b54ccd46e40dcd529112f))
+
+* test: rust 3153, 148 ([`945903e`](https://github.com/QuBenhao/LeetCode/commit/945903edc9e6e2738cb03c0843236d833803754b))
+
+* test: typescript 3153, 148, LCR 048
+
+solution ([`44542c6`](https://github.com/QuBenhao/LeetCode/commit/44542c66054d1c8d3677a99cc4a7015be784eb2b))
+
+* test: Java 3153, 148, LCR 048
+
+solution ([`c03851c`](https://github.com/QuBenhao/LeetCode/commit/c03851c0783897d0da25717c6487158d684f2c59))
+
+* test: c++ 3153, 148, LCR 048
+
+solution ([`44e3164`](https://github.com/QuBenhao/LeetCode/commit/44e3164961a6a6460d5768a3b99b15c61db2e283))
+
+* test: golang 3153, 148, LCR 048
+
+solution ([`1696765`](https://github.com/QuBenhao/LeetCode/commit/16967654d6b7cf5c900844aa53818001130f1c82))
+
+* test: python 3153, 148, LCR 048
+
+solution ([`9b6bb34`](https://github.com/QuBenhao/LeetCode/commit/9b6bb34c9af8d7b37b3f756dcb9373d8f2ddb366))
+
+* test: [20240830] Add daily LeetCode problem ([`9b4e0b9`](https://github.com/QuBenhao/LeetCode/commit/9b4e0b97c12b83e394750ebcbe71e4ee60e89722))
+
+* test: 3142, 45, LCR 015 solution
+
+Java, typescript, rust ([`33c6459`](https://github.com/QuBenhao/LeetCode/commit/33c64591c765e4931a386c91cbfbd8aa14b9c229))
+
+* test: c++ 3142, 45, LCR 015
+
+solution ([`afecd31`](https://github.com/QuBenhao/LeetCode/commit/afecd312ab17d80df863416d678086702a54e989))
+
+* test: golang 3142, 45, LCR 015
+
+solution ([`9d498bb`](https://github.com/QuBenhao/LeetCode/commit/9d498bb809f6ee25b07381ec9834c3446a27c151))
+
+* test: python 3142, 45, LCR 015
+
+solution ([`689fbeb`](https://github.com/QuBenhao/LeetCode/commit/689fbeb306f70d63422001770399d750f511d7ca))
+
+* test: [20240829] Add daily LeetCode problem ([`1d2f0ed`](https://github.com/QuBenhao/LeetCode/commit/1d2f0ed667108f219dcbbcb78f3858dd90fe7448))
+
+* test: try release
+
+python Semantic Release ([`bbfe250`](https://github.com/QuBenhao/LeetCode/commit/bbfe250842e8bbcb787bdc079077b8efdf57043f))
+
+* test: rust 3144, 131, LCR 008
+
+solution ([`3768a50`](https://github.com/QuBenhao/LeetCode/commit/3768a50cedbb27609cfc48c41134aee5f3e45765))
+
+* test: typescript 3144, 131, LCR 008
+
+solution ([`e8631d6`](https://github.com/QuBenhao/LeetCode/commit/e8631d6b5010a05996688885c87b11648a01f309))
+
+* test: Java 3144, 131, LCR 008
+
+solution ([`1d00a7d`](https://github.com/QuBenhao/LeetCode/commit/1d00a7d95008799e92ada8f4221a7d20b9501e8d))
+
+* test: c++ 3144, 131, LCR 008
+
+solution ([`b619423`](https://github.com/QuBenhao/LeetCode/commit/b6194236995e3f9c49dddb22c19bfce29b94d106))
+
+* test: golang 3144, 131, LCR 008
+
+solution ([`10b062c`](https://github.com/QuBenhao/LeetCode/commit/10b062c61b099f8945357ef777998bf962aa2882))
+
+* test: python 3144, 131, LCR 008
+
+solution ([`65b9e5c`](https://github.com/QuBenhao/LeetCode/commit/65b9e5cf69147ac7cb1d5b4cccad82b959eccd9b))
+
+* test: [20240828] Add daily LeetCode problem ([`4f08743`](https://github.com/QuBenhao/LeetCode/commit/4f08743aa3f2240026aa2f7b3f59cbe156b08de8))
+
+* test: rust 3134, 208, LCR 068
+
+solution ([`011ff53`](https://github.com/QuBenhao/LeetCode/commit/011ff530266d266c754fce064eeda01acfa43d3f))
+
+* test: typescript 3134, 208, LCR 068
+
+solution ([`2a99032`](https://github.com/QuBenhao/LeetCode/commit/2a9903277915bc3ca39ed048d7effd8d08e2909e))
+
+* test: Java 3134, 208, LCR 068
+
+solution ([`20e18dc`](https://github.com/QuBenhao/LeetCode/commit/20e18dc9c8561d08fcf5f779b8b3e49dee415d48))
+
+* test: c++ 3134, 208, LCR 068
+
+solution ([`2a0b8cb`](https://github.com/QuBenhao/LeetCode/commit/2a0b8cbe80ee16d8e2f35932c5aa3809aad45a66))
+
+* test: golang 3134, 208, LCR 068
+
+solution ([`0f65b8c`](https://github.com/QuBenhao/LeetCode/commit/0f65b8c7e813f736eaf60a506c693ffbc6b6e036))
+
+* test: python 3134, 208, LCR 068
+
+solution ([`d68cf12`](https://github.com/QuBenhao/LeetCode/commit/d68cf123ef45ad4f979c8a66a4c58365bc1a8732))
+
+* test: [20240827] Add daily LeetCode problem ([`4202000`](https://github.com/QuBenhao/LeetCode/commit/42020009849a0b3ad9d34e8b9b8deb030a203400))
+
+* test: rust 240, LCR 042
+
+solution ([`5f5fb60`](https://github.com/QuBenhao/LeetCode/commit/5f5fb60c276aa521908f918a5d117758ba04730e))
+
+* test: typescript 690, 240
+
+solution ([`ca746b4`](https://github.com/QuBenhao/LeetCode/commit/ca746b420047c64fe1aca48f770884be4e84a5f3))
+
+* test: java 690, 240, LCR 042
+
+solution ([`7343184`](https://github.com/QuBenhao/LeetCode/commit/73431848fa17e5e1e529a7af87adcbdb318a14b9))
+
+* test: c++ 690, 240, LCR 042
+
+solution ([`3cae17e`](https://github.com/QuBenhao/LeetCode/commit/3cae17eeae8d739ff62542fbdc72c47e43c7dde5))
+
+* test: golang 690, 240, LCR 042
+
+solution ([`add48c0`](https://github.com/QuBenhao/LeetCode/commit/add48c08e2cbb243a735a3e4680d64cb365d7691))
+
+* test: python 690, 240, LCR 042
+
+solution ([`df44360`](https://github.com/QuBenhao/LeetCode/commit/df4436077508a97637f3b76cb1af4582b872da36))
+
+* test: [20240826] Add daily LeetCode problem ([`a13dd90`](https://github.com/QuBenhao/LeetCode/commit/a13dd90a35158819d8ee6a92d5d38636701ae007))
 
 * test: debug action
 
@@ -4687,6 +4865,18 @@ Introduced a new test file, tree_test.go, containing unit tests for the conversi
 The extended test coverage now includes the &#39;ListNode&#39; function. This also involves the creation and validation of cyclic nodes and intersecting nodes within a linked list. The respective checks for node existence, length, and correct values have been implemented in these new tests. ([`a61f839`](https://github.com/QuBenhao/LeetCode/commit/a61f8397e29900191980b5ec3e02ca0850f12df3))
 
 ### Unknown
+
+* Merge pull request #134 from QuBenhao/133-ts-jest-0-and-0
+
+133 ts jest zero and negative zero ([`1eefa24`](https://github.com/QuBenhao/LeetCode/commit/1eefa245e9bfa71ff455b8e8bab2e17d7cf99422))
+
+* Merge pull request #132 from QuBenhao/131-custom-class-690
+
+131 custom class 690 ([`1ff1c42`](https://github.com/QuBenhao/LeetCode/commit/1ff1c42c292607429e5a80c0f5dfb533b38a3b5e))
+
+* Revert &#34;fix: breaking change&#34;
+
+This reverts commit 26f191e09492885d2867a1e24fa4fbdeb5705ec9. ([`4bbf7fe`](https://github.com/QuBenhao/LeetCode/commit/4bbf7fe7fcdfd0dfcc3507af2557d5ba13335793))
 
 * [20240825] Add daily LeetCode problem ([`1227865`](https://github.com/QuBenhao/LeetCode/commit/1227865fad4f314df6fde1e55e761688824a67f1))
 

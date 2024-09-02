@@ -116,6 +116,24 @@ members = [
 	"problems/problems_3144",
 	"problems/problems_LCR_008",
 	"problems/problems_131",
+	"problems/problems_3142",
+	"problems/problems_LCR_015",
+	"problems/problems_45",
+	"problems/problems_3153",
+	"problems/problems_LCR_048",
+	"problems/problems_148",
+	"problems/problems_3127",
+	"problems/problems_LCR_105",
+	"problems/problems_LCR_090",
+	"problems/problems_437",
+	"problems/problems_238",
+	"problems/problems_1450",
+	"problems/problems_LCR_063",
+	"problems/problems_84",
+	"problems/problems_416",
+	"problems/problems_2024",
+	"problems/problems_LCR_037",
+	"problems/problems_72",
 ]
 
 [package]
@@ -254,3 +272,21 @@ solution_208 = { path = "problems/problems_208", features = ["solution_208"] }
 solution_3144 = { path = "problems/problems_3144", features = ["solution_3144"] }
 solution_LCR_008 = { path = "problems/problems_LCR_008", features = ["solution_LCR_008"] }
 solution_131 = { path = "problems/problems_131", features = ["solution_131"] }
+solution_3142 = { path = "problems/problems_3142", features = ["solution_3142"] }
+solution_LCR_015 = { path = "problems/problems_LCR_015", features = ["solution_LCR_015"] }
+solution_45 = { path = "problems/problems_45", features = ["solution_45"] }
+solution_3153 = { path = "problems/problems_3153", features = ["solution_3153"] }
+solution_LCR_048 = { path = "problems/problems_LCR_048", features = ["solution_LCR_048"] }
+solution_148 = { path = "problems/problems_148", features = ["solution_148"] }
+solution_3127 = { path = "problems/problems_3127", features = ["solution_3127"] }
+solution_LCR_105 = { path = "problems/problems_LCR_105", features = ["solution_LCR_105"] }
+solution_LCR_090 = { path = "problems/problems_LCR_090", features = ["solution_LCR_090"] }
+solution_437 = { path = "problems/problems_437", features = ["solution_437"] }
+solution_238 = { path = "problems/problems_238", features = ["solution_238"] }
+solution_1450 = { path = "problems/problems_1450", features = ["solution_1450"] }
+solution_LCR_063 = { path = "problems/problems_LCR_063", features = ["solution_LCR_063"] }
+solution_84 = { path = "problems/problems_84", features = ["solution_84"] }
+solution_416 = { path = "problems/problems_416", features = ["solution_416"] }
+solution_2024 = { path = "problems/problems_2024", features = ["solution_2024"] }
+solution_LCR_037 = { path = "problems/problems_LCR_037", features = ["solution_LCR_037"] }
+solution_72 = { path = "problems/problems_72", features = ["solution_72"] }
