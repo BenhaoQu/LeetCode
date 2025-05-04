@@ -255,6 +255,7 @@ async def submit_code(root_path, problem_folder: str, question_id: str, question
                                 cookies={"cookie": cookie},
                                 headers={"Origin": "https://leetcode.cn"})
     if not submit_id:
+        logging.error(f"[{question_id}.{question_slug}]提交失败")
         return None
     submit_success = False
     csrf_token = None
@@ -284,6 +285,8 @@ async def submit_code(root_path, problem_folder: str, question_id: str, question
             submit_success = True
             break
     if not submit_success:
+        logging.error(f"[{question_id}.{question_slug}]提交成功,但检查结果失败,"
+                      f"请手动检查: https://leetcode.cn/problems/{question_slug}/submissions/{submit_id}/")
         return None
     submit_detail = get_submission_detail(submit_id, cookie, handle_submit_detail_response)
     if submit_detail is None:
@@ -307,12 +310,14 @@ async def submit_code(root_path, problem_folder: str, question_id: str, question
             _add_test(root_path, problem_folder, question_id,
                       submit_detail["outputDetail"]["input"], submit_detail["outputDetail"]["expectedOutput"])
 
-    logging.info(f"[{question_id}.{question_slug}]提交结果\n" + SUBMIT_BASIC_RESULT.format(
+    logging.info(SUBMIT_BASIC_RESULT.format(
+        typed_code,
+        question_id,
+        question_slug,
         submit_detail["statusDisplay"],
         submit_detail["passedTestCaseCnt"],
         submit_detail["totalTestCaseCnt"],
         part,
-        typed_code
     ))
     logging.info(f"提交详情: https://leetcode.cn/problems/{question_slug}/submissions/{submit_id}/ [需登录查看]")
     return submit_detail
