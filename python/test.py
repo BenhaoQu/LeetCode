@@ -12,6 +12,7 @@ from utils import get_default_folder, timeout
 
 logging.basicConfig(level=logging.INFO, format=constants.LOGGING_FORMAT, datefmt=constants.DATE_FORMAT)
 
+
 class Test(unittest.TestCase):
     def test(self):
         @timeout()
