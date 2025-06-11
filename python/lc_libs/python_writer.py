@@ -2,12 +2,12 @@ import inspect
 import logging
 import os
 import time
-import traceback
-from typing import Tuple
-from collections import defaultdict, deque
+from typing import Tuple, Optional
+from collections import defaultdict
 from importlib.util import spec_from_file_location, module_from_spec
 
-from python.constants import TESTCASE_TEMPLATE_PYTHON, TESTCASE_TEMPLATE_PYTHON_TESTCASES, SOLUTION_TEMPLATE_PYTHON
+from python.constants import TESTCASE_TEMPLATE_PYTHON, TESTCASE_TEMPLATE_PYTHON_TESTCASES, SOLUTION_TEMPLATE_PYTHON, \
+    CONTEST_TEMPLATE_PYTHON
 from python.lc_libs.language_writer import LanguageWriter
 from python.utils import back_question_id
 
@@ -18,35 +18,8 @@ class Python3Writer(LanguageWriter):
         super().__init__()
         self.solution_file = "solution.py"
         self.main_folder = "python"
-        self.test_file = "test.py"
-        self.tests_file = "tests.py"
         self.lang_env_commands = [["python", "--version"]]
         self.test_commands = [["python", os.path.join(self.main_folder, self.test_file)]]
-
-    def change_test(self, root_path, problem_folder: str, question_id: str):
-        file_path = os.path.join(root_path, self.main_folder, self.test_file)
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        with open(file_path, "w", encoding="utf-8") as f:
-            lines = content.split("\n")
-            for line_idx, line in enumerate(lines):
-                if line.startswith("QUESTION = "):
-                    f.write(f'QUESTION = "{question_id}"\n')
-                    continue
-                if line_idx < len(lines) - 1 or line:
-                    f.write(line + "\n")
-
-    def change_tests(self, root_path, problem_ids_folders: list):
-        file_path = os.path.join(root_path, self.main_folder, self.tests_file)
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        with open(file_path, "w", encoding="utf-8") as f:
-            lines = content.split("\n")
-            for line_idx, line in enumerate(lines):
-                if line.startswith("QUESTIONS ="):
-                    line = "QUESTIONS = {}".format(problem_ids_folders)
-                if line_idx < len(lines) - 1 or line:
-                    f.write(line + "\n")
 
     def write_solution(self, code_template: str, code: str = None, problem_id: str = "",
                        problem_folder: str = "") -> str:
@@ -79,14 +52,16 @@ class Python3Writer(LanguageWriter):
         logging.warning("Fall back to write python3 backup solution")
         return Python3Writer.__write_solution_python_backup(code_template)
 
+    def write_contest(self, code_default: str, problem_id: str = "", contest_folder: str = "") -> Optional[str]:
+        try:
+            return CONTEST_TEMPLATE_PYTHON.format(code_default)
+        except Exception as _:
+            logging.error(f"Failed to write [{problem_id}] python3 contest", exc_info=True)
+        return None
+
     def get_solution_code(self, root_path, problem_folder: str, problem_id: str) -> Tuple[str, str]:
         if not problem_id:
-            with open(os.path.join(root_path, self.main_folder, self.test_file), "r", encoding="utf-8") as f:
-                lines = f.readlines()
-                for line in lines:
-                    if line.strip().startswith("QUESTION ="):
-                        problem_id = line.split("=")[-1].strip().replace('"', '')
-                        break
+            problem_id = self.get_test_problem_id(root_path, problem_folder)
         if not problem_id:
             return "", problem_id
         file_path = os.path.join(root_path, problem_folder, f"{problem_folder}_{problem_id}", "solution.py")
@@ -365,7 +340,7 @@ class Python3Writer(LanguageWriter):
                     remain += f"        heads = [list_to_linked_list(nums) for nums in nums_arr]\n"
                     inputs += "heads"
                     if modify_in_place and not modify_in_place_inputs:
-                        add_lib += ", tree_to_list" if exists else "from python.object_libs import linked_list_to_list"
+                        add_lib += ", linked_list_to_list" if exists else "from python.object_libs import linked_list_to_list"
                         modify_in_place_inputs = "linked_list_to_list(heads[0])"
                 else:
                     if testcases:
@@ -399,7 +374,7 @@ class Python3Writer(LanguageWriter):
                     remain += f"        head{idx} = list_to_linked_list(nums{idx})\n"
                     inputs += f"head{idx}"
                     if modify_in_place and not modify_in_place_inputs:
-                        add_lib += ", tree_to_list" if exists else "from python.object_libs import linked_list_to_list"
+                        add_lib += ", linked_list_to_list" if exists else "from python.object_libs import linked_list_to_list"
                         modify_in_place_inputs = f"linked_list_to_list(head{idx})"
                     idx += 1
             elif "Node" in str(v.annotation) and "Node" in cs_map and "neighbors" in cs_map["Node"][0][1]:
@@ -512,6 +487,7 @@ class Python3Writer(LanguageWriter):
                 continue
             if v.name == "kwargs":
                 continue
+            logging.debug("Parameter: %s, %s", v.name, v.annotation)
             par_map[v.name] = v.annotation
             if is_first:
                 is_first = False
@@ -545,7 +521,7 @@ class Python3Writer(LanguageWriter):
                 idx += 1
 
         if len(par_map) > 0:
-            process_input += " = ops[0]\n"
+            process_input += " = inputs[0][0]\n"
 
         process_input += remain + f"        obj = {class_name}({inputs})\n"
         return process_input
@@ -608,19 +584,23 @@ class Python3Writer(LanguageWriter):
             else:
                 # Too complex to fix here
                 pass
-            import_libs.append("\n")
             if len(cs_map) == 1:
                 class_name, methods = "", []
                 for k, v in cs_map.items():
                     class_name, methods = k, v
+                return_part = ("        return [None] + [call_method(obj, op, *ipt)"
+                               " for op, ipt in zip(ops[1:], inputs[1:])]")
                 for method in methods:
+                    logging.debug("Method: %s", method)
                     if method[0] == "__init__":
                         process_input = Python3Writer.__extract_object_process_input_from_method(class_name, method)
-                        break
-
-                process_input += ("        return [None] + [call_method(obj, op, *ipt)"
-                                  " for op, ipt in zip(ops[1:], inputs[1:])]")
-
+                    elif "TreeNode" in str(method[2]):
+                        import_libs.append(", tree_to_list\nimport python.object_libs.tree")
+                        return_part = ("        return [None] + [tree_to_list(r) if isinstance("
+                                       "(r := call_method(obj, op, *ipt)), python.object_libs.tree.TreeNode)"
+                                       " else r for op, ipt in zip(ops[1:], inputs[1:])]")
+                process_input += return_part
+            import_libs.append("\n")
         return import_libs, process_input
 
     @staticmethod

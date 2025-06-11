@@ -1,5 +1,6 @@
 .name
 .idea/
+.cache/
 __pycache__/
 .env
 python/dev/tmp*
@@ -10,7 +11,6 @@ bazel-bin
 bazel-LeetCode
 bazel-out
 bazel-testlogs
-MODULE.bazel
 MODULE.bazel.lock
 bazel-LeetCode/
 /bazel-LeetCode/

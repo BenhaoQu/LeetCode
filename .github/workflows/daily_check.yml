@@ -25,7 +25,7 @@ jobs:
           go.mod
           go.sum
           pom.xml
-          WORKSPACE
+          MODULE.bazel
           tsconfig.json
           package.json
           jest.config.ts
@@ -33,6 +33,11 @@ jobs:
           data
           ${{ secrets.PROBLEM_FOLDER || 'problems' }}
           ${{ secrets.PREMIUM_FOLDER || 'premiums' }}
+          daily-${{ secrets.PROBLEM_FOLDER || 'problems' }}.json
+          BUILD
+          extensions.bzl
+          solutions.bzl
+          get_daily_path.py
 
     - name: Set up Python environment
       uses: actions/setup-python@v2
@@ -43,7 +48,7 @@ jobs:
       continue-on-error: true
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.24'
 
     - name: Set up JDK
       continue-on-error: true
@@ -90,8 +95,8 @@ jobs:
         bazelrc: |
           build --color=yes
           build --show_timestamps
-          build --cxxopt=-std=c++20
-          test --cxxopt=-std=c++20
+          build --cxxopt=-std=c++23
+          test --cxxopt=-std=c++23
 
     - name: Run script
       env:

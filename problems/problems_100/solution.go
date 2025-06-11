@@ -14,10 +14,10 @@ import (
  * }
  */
 func isSameTree(p *TreeNode, q *TreeNode) bool {
-    return (p == nil && q == nil) || (p != nil && q != nil && p.Val == q.Val && isSameTree(p.Left, q.Left) && isSameTree(p.Right, q.Right))
+	return (p == nil && q == nil) || (p != nil && q != nil && p.Val == q.Val && isSameTree(p.Left, q.Left) && isSameTree(p.Right, q.Right))
 }
 
-func Solve(input string) interface{} {
+func Solve(input string) any {
 	values := strings.Split(input, "\n")
 	var p *TreeNode
 	var q *TreeNode

@@ -13,7 +13,6 @@ class TypescriptWriter(LanguageWriter):
         self.solution_file = "solution.ts"
         self.main_folder = "typescript"
         self.test_file = "test.ts"
-        self.tests_file = "problems.test.ts"
         self._LIST_NODE_PATH = "\"../../typescript/models/listnode\";"
         self._TREE_NODE_PATH = "\"../../typescript/models/treenode\";"
         self._NODE_NEXT_PATH = "\"../../typescript/models/node.next\";"
@@ -23,36 +22,6 @@ class TypescriptWriter(LanguageWriter):
         self.test_commands = [["npm", "test", "--alwaysStrict", "--strictBindCallApply",
                                "--strictFunctionTypes", "--target ES202",
                                str(os.path.join(self.main_folder, self.test_file))]]
-
-    def change_test(self, root_path, problem_folder: str, question_id: str):
-        test_file_path = os.path.join(root_path, self.main_folder, self.test_file)
-        with open(test_file_path, 'r', encoding="utf-8") as f:
-            content = f.read()
-        with open(test_file_path, 'w', encoding="utf-8") as f:
-            lines = content.split("\n")
-            for line_idx, line in enumerate(lines):
-                if "const PROBLEM_ID: string = \"" in line:
-                    f.write(line.split("\"")[0] + f"\"{question_id}\";\n")
-                    continue
-                elif ("let problemFolder: string = (process.env.PROBLEM_FOLDER && process.env.PROBLEM_FOLDER.length > "
-                      "0) ? process.env.PROBLEM_FOLDER : \"") in line:
-                    f.write(line.split("\"")[0] + f"\"{problem_folder}\";\n")
-                    continue
-                if line_idx < len(lines) - 1 or line:
-                    f.write(line + "\n")
-
-    def change_tests(self, root_path, problem_ids_folders: list):
-        tests_file_path = os.path.join(root_path, self.main_folder, self.tests_file)
-        with open(tests_file_path, 'r', encoding="utf-8") as f:
-            content = f.read()
-        with open(tests_file_path, 'w', encoding="utf-8") as f:
-            lines = content.split("\n")
-            for line_idx, line in enumerate(lines):
-                if "const PROBLEMS: string[][] = " in line:
-                    f.write("const PROBLEMS: string[][] = {};\n".format(str(problem_ids_folders)))
-                    continue
-                if line_idx < len(lines) - 1 or line:
-                    f.write(line + "\n")
 
     def write_solution(self, code_default: str, code: str = None, problem_id: str = "",
                        problem_folder: str = "") -> str:
@@ -122,21 +91,39 @@ class TypescriptWriter(LanguageWriter):
                 return_type = strip_line.split("{")[0].split(")")[-1].split(":")[-1].strip()
                 variables = [s for s in map(str.strip, strip_line.split("(")[1].split(")")[0].split(",")) if s != ""]
                 if func_name == "constructor" and return_type == "":
+                    logging.debug("Constructor: %s, vars: %s", func_name, variables)
+                    variables_strs = []
+                    for i, v in enumerate(variables):
+                        if "TreeNode" in v:
+                            import_part[self._TREE_NODE_PATH].add("TreeNode")
+                            import_part[self._TREE_NODE_PATH].add("JSONArrayToTreeNode")
+                            variables_strs.append(f"JSONArrayToTreeNode(opValues[0][{i}])")
+                            continue
+                        variables_strs.append(f"opValues[0][{i}]")
                     process_inputs.append("const obj: {} = new {}({});".format(
                         class_name,
                         class_name,
-                        ", ".join("opValues[0][{}]".format(i) for i in range(len(variables)))
+                        ", ".join(variables_strs)
                     ))
                 else:
+                    logging.debug("Func: %s, vars: %s, return: %s", func_name, variables, return_type)
                     class_methods[class_name].append((func_name, variables, return_type))
         for cs, methods in class_methods.items():
             process_inputs.append("for (let i: number = 1; i < operators.length; i++) {")
             for func_name, variables, return_type in methods:
                 process_inputs.append(f"\tif (operators[i] == \"{func_name}\")" + " {")
                 if return_type != "" and return_type != "void":
-                    process_inputs.append("\t\tans.push(obj.{}({}));".format(
-                        func_name,
-                        ", ".join("opValues[i][{}]".format(i) for i in range(len(variables)))))
+                    logging.debug("Return type: %s", return_type)
+                    if "TreeNode" in return_type:
+                        import_part[self._TREE_NODE_PATH].add("TreeNode")
+                        import_part[self._TREE_NODE_PATH].add("TreeNodeToJSONArray")
+                        process_inputs.append("\t\tans.push(TreeNodeToJSONArray(obj.{}({})));".format(
+                            func_name,
+                            ", ".join("opValues[i][{}]".format(i) for i in range(len(variables)))))
+                    else:
+                        process_inputs.append("\t\tans.push(obj.{}({}));".format(
+                            func_name,
+                            ", ".join("opValues[i][{}]".format(i) for i in range(len(variables)))))
                 else:
                     process_inputs.append("\t\tobj.{}({});".format(func_name,
                                                                    ", ".join("opValues[i][{}]".format(i) for i in
@@ -158,12 +145,7 @@ class TypescriptWriter(LanguageWriter):
 
     def get_solution_code(self, root_path, problem_folder: str, problem_id: str) -> Tuple[str, str]:
         if not problem_id:
-            with open(os.path.join(root_path, "typescript", "test.ts"), 'r', encoding="utf-8") as f:
-                lines = f.read().split("\n")
-                for line in lines:
-                    if "const PROBLEM_ID: string = \"" in line:
-                        problem_id = line.split('"')[1]
-                        break
+            problem_id = self.get_test_problem_id(root_path, problem_folder)
         if not problem_id:
             return "", problem_id
         file_path = os.path.join(root_path, problem_folder, f"{problem_folder}_{problem_id}", "solution.ts")

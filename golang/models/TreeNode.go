@@ -11,31 +11,25 @@ type TreeNode struct {
 	Right *TreeNode
 }
 
-func ArrayToTree(input string) *TreeNode {
-	var value interface{}
-	if err := json.Unmarshal([]byte(input), &value); err != nil {
-		log.Fatalf("Unable to process tree input: %s", input)
-		return nil
-	}
-	arr := value.([]interface{})
-	if len(arr) == 0 {
+func InterfaceArrayToTree(input []any) *TreeNode {
+	if len(input) == 0 {
 		return nil
 	}
 	var root *TreeNode
-	if arr[0] == nil {
+	if input[0] == nil {
 		return nil
 	} else {
-		root = &TreeNode{Val: int(arr[0].(float64))}
+		root = &TreeNode{Val: int(input[0].(float64))}
 	}
 	isLeft := 1
 	var nodes []*TreeNode
 	currNode := root
-	for i := 1; i < len(arr); i++ {
+	for i := 1; i < len(input); i++ {
 		var node *TreeNode
-		if arr[i] == nil {
+		if input[i] == nil {
 			node = nil
 		} else {
-			node = &TreeNode{Val: int(arr[i].(float64))}
+			node = &TreeNode{Val: int(input[i].(float64))}
 		}
 		if isLeft == 1 {
 			if node != nil {
@@ -55,8 +49,18 @@ func ArrayToTree(input string) *TreeNode {
 	return root
 }
 
+func ArrayToTree(input string) *TreeNode {
+	var value any
+	if err := json.Unmarshal([]byte(input), &value); err != nil {
+		log.Fatalf("Unable to process tree input: %s", input)
+		return nil
+	}
+	arr := value.([]any)
+	return InterfaceArrayToTree(arr)
+}
+
 func ArrayToTreeArray(input string) []*TreeNode {
-	var value []interface{}
+	var value []any
 	if err := json.Unmarshal([]byte(input), &value); err != nil {
 		log.Fatalf("Unable to process tree input: %s", input)
 		return nil
@@ -66,7 +70,7 @@ func ArrayToTreeArray(input string) []*TreeNode {
 	}
 	var roots []*TreeNode
 	for _, v := range value {
-		arr := v.([]interface{})
+		arr := v.([]any)
 		if len(arr) == 0 {
 			roots = append(roots, nil)
 			continue
@@ -113,12 +117,12 @@ func ArrayToTreeAndTargets(input string, targets ...int) []*TreeNode {
 	for i := 0; i <= targetNums; i++ {
 		ans[i] = nil
 	}
-	var value interface{}
+	var value any
 	if err := json.Unmarshal([]byte(input), &value); err != nil {
 		log.Fatalf("Unable to process tree input: %s", input)
 		return ans
 	}
-	arr := value.([]interface{})
+	arr := value.([]any)
 	if len(arr) == 0 {
 		return ans
 	}
@@ -167,8 +171,8 @@ func ArrayToTreeAndTargets(input string, targets ...int) []*TreeNode {
 	return ans
 }
 
-func TreeToArray(root *TreeNode) []interface{} {
-	var ans []interface{}
+func TreeToArray(root *TreeNode) []any {
+	var ans []any
 	queue := []*TreeNode{root}
 	for len(queue) > 0 {
 		node := queue[0]

@@ -13,48 +13,8 @@ class JavaWriter(LanguageWriter):
         super().__init__()
         self.solution_file = "Solution.java"
         self.main_folder = "qubhjava/test"
-        self.test_file = "TestMain.java"
-        self.tests_file = "ProblemsTest.java"
         self.lang_env_commands = [["mvn", "-v"]]
         self.test_commands = [["mvn", "test", "-Dtest=qubhjava.test.TestMain"]]
-
-    def change_test(self, root_path, problem_folder: str, question_id: str):
-        test_file_path = os.path.join(root_path, self.main_folder, self.test_file)
-        with open(test_file_path, 'r', encoding="utf-8") as f:
-            content = f.read()
-        with open(test_file_path, 'w', encoding="utf-8") as f:
-            appear_problem_folder = False
-            lines = content.split("\n")
-            for line_idx, line in enumerate(lines):
-                if "private static final String PROBLEM_ID = " in line:
-                    f.write(line.split("\"")[0] + f"\"{question_id}\";\n")
-                    continue
-                elif f"import {problem_folder}.{problem_folder}_" in line and ".Solution;" in line:
-                    f.write(f"import {problem_folder}.{problem_folder}_{question_id}.Solution;\n")
-                    appear_problem_folder = True
-                    continue
-                elif "import " in line and ".Solution;" in line and not line.startswith("//"):
-                    f.write(f"// {line}\n")
-                    continue
-                elif line.strip() == "import qubhjava.Testcase;" and not appear_problem_folder:
-                    f.write(f"import {problem_folder}.{problem_folder}_{question_id}.Solution;\n")
-                    appear_problem_folder = True
-                if line_idx < len(lines) - 1 or line:
-                    f.write(line + "\n")
-
-    def change_tests(self, root_path, problem_ids_folders: list):
-        tests_file_path = os.path.join(root_path, self.main_folder, self.tests_file)
-        with open(tests_file_path, 'r', encoding="utf-8") as f:
-            content = f.read()
-        with open(tests_file_path, 'w', encoding="utf-8") as f:
-            lines = content.split("\n")
-            for line_idx, line in enumerate(lines):
-                if "private static final String[][] PROBLEMS = " in line:
-                    f.write("\tprivate static final String[][] PROBLEMS = {" +
-                            ", ".join(f"{{\"{pid}\", \"{pf}\"}}" for pid, pf in problem_ids_folders) + "};\n")
-                    continue
-                if line_idx < len(lines) - 1 or line:
-                    f.write(line + "\n")
 
     def write_solution(self, code_default: str, code: str = None, problem_id: str = "",
                        problem_folder: str = "") -> str:
@@ -74,6 +34,7 @@ class JavaWriter(LanguageWriter):
             class_name = ""
             all_return_parts = []
             func_parse_input = defaultdict(list)
+            tmp_additional_import = set()
             for line in code.split("\n"):
                 strip_line = line.strip()
                 if (strip_line.startswith("class ") or strip_line.startswith("public class")) and strip_line.endswith(
@@ -83,7 +44,7 @@ class JavaWriter(LanguageWriter):
                     vs, pi, ai, rp, func_name, rt = JavaWriter.__parse_java_method(strip_line, code_default,
                                                                                    is_object_problem=True)
                     variables.extend(vs)
-                    import_packages.extend(ai)
+                    tmp_additional_import.update(ai)
                     if func_name == class_name:
                         parse_input.extend([p.replace("inputJsonValues", "opValues[0]") for p in pi])
                         parse_input.append(f"{class_name} obj = new {rp};")
@@ -91,6 +52,7 @@ class JavaWriter(LanguageWriter):
                         func_parse_input[func_name].extend(
                             ["\t\t" + p.replace("inputJsonValues", "opValues[i]") for p in pi])
                         all_return_parts.append((func_name, rt, rp))
+            import_packages.extend(tmp_additional_import)
             import_packages.append("")
             import_packages.append("")
             import_packages.extend(code.split("\n"))
@@ -104,6 +66,10 @@ class JavaWriter(LanguageWriter):
                     parse_input.extend(func_parse_input[func_name][:-1])
                     parse_input.append(f"\t\tobj.{func_name}({rp});")
                     parse_input.append(f"\t\tans.add(null);")
+                elif "TreeNode" in rt:
+                    parse_input.extend(func_parse_input[func_name])
+                    rp = rp.replace("TreeNode.TreeNodeToArray(", "TreeNode.TreeNodeToArray(obj.")
+                    parse_input.append(f"\t\tans.add({rp});")
                 else:
                     parse_input.extend(func_parse_input[func_name])
                     parse_input.append(f"\t\tans.add(obj.{rp});")
@@ -152,12 +118,7 @@ class JavaWriter(LanguageWriter):
 
     def get_solution_code(self, root_path, problem_folder: str, problem_id: str) -> Tuple[str, str]:
         if not problem_id:
-            with open(os.path.join(root_path, self.main_folder, self.test_file), 'r', encoding="utf-8") as f:
-                lines = f.read().split("\n")
-                for line in lines:
-                    if "private static final String PROBLEM_ID = \"" in line:
-                        problem_id = line.split('"')[1]
-                        break
+            problem_id = self.get_test_problem_id(root_path, problem_folder)
         if not problem_id:
             return "", problem_id
         file_path = os.path.join(root_path, problem_folder, f"{problem_folder}_{problem_id}", self.solution_file)
