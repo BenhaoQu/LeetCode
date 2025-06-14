@@ -66,6 +66,8 @@
 - [其他](#其他)
     - [LRU缓存](#lru缓存)
     - [倍增](#倍增)
+        - [最近公共祖先](#最近公共祖先)
+        - [快速幂](#快速幂)
 
 ---
 
@@ -1662,6 +1664,51 @@ public:
         return size[find(x)];
     }
 };
+```
+```java
+class UnionFind {
+    private int[] parent;
+    private int[] size;
+    private int count;
+
+    public UnionFind(int n) {
+        parent = new int[n];
+        size = new int[n];
+        count = n;
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
+            size[i] = 1;
+        }
+    }
+
+    public int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]); // Path compression
+        }
+        return parent[x];
+    }
+
+    public boolean union(int x, int y) {
+        int px = find(x);
+        int py = find(y);
+        if (px == py) {
+            return false; // Already in the same set
+        }
+        if (size[px] < size[py]) {
+            parent[px] = py;
+            size[py] += size[px];
+        } else {
+            parent[py] = px;
+            size[px] += size[py];
+        }
+        count--;
+        return true; // Union successful
+    }
+
+    public int getCount() {
+        return count;
+    }
+}
 ```
 
 ---
@@ -4351,7 +4398,7 @@ Table），使得每次查询或操作的时间复杂度从线性降低到对数
 
 ### **典型应用场景**
 
-#### 1. **最近公共祖先（LCA）**
+#### 最近公共祖先
 
 - **问题**：在树中快速找到两个节点的最近公共祖先。
 - **倍增实现**：
@@ -4492,7 +4539,7 @@ func (t *TreeAncestor) GetLCA(x, y int) int {
     2. 查询区间 `[L, R]` 时，取最大的 $`k`$ 使得 $`2^k \leq R-L+1`$，比较 `st[k][L]` 和 `st[k][R-2^k+1]`。
 - **时间复杂度**：预处理 $`O(n \log n)`$，查询 $`O(1)`$。
 
-#### 3. **快速幂**
+#### 快速幂
 
 - **问题**：高效计算 $`a^b \mod p`$。
 - **倍增实现**：
