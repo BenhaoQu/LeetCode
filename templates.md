@@ -66,6 +66,8 @@
 - [其他](#其他)
     - [LRU缓存](#lru缓存)
     - [倍增](#倍增)
+        - [最近公共祖先](#最近公共祖先)
+        - [快速幂](#快速幂)
 
 ---
 
@@ -1662,6 +1664,51 @@ public:
         return size[find(x)];
     }
 };
+```
+```java
+class UnionFind {
+    private int[] parent;
+    private int[] size;
+    private int count;
+
+    public UnionFind(int n) {
+        parent = new int[n];
+        size = new int[n];
+        count = n;
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
+            size[i] = 1;
+        }
+    }
+
+    public int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]); // Path compression
+        }
+        return parent[x];
+    }
+
+    public boolean union(int x, int y) {
+        int px = find(x);
+        int py = find(y);
+        if (px == py) {
+            return false; // Already in the same set
+        }
+        if (size[px] < size[py]) {
+            parent[px] = py;
+            size[py] += size[px];
+        } else {
+            parent[py] = px;
+            size[px] += size[py];
+        }
+        count--;
+        return true; // Union successful
+    }
+
+    public int getCount() {
+        return count;
+    }
+}
 ```
 
 ---
@@ -4351,7 +4398,7 @@ Table），使得每次查询或操作的时间复杂度从线性降低到对数
 
 ### **典型应用场景**
 
-#### 1. **最近公共祖先（LCA）**
+#### 最近公共祖先
 
 - **问题**：在树中快速找到两个节点的最近公共祖先。
 - **倍增实现**：
@@ -4417,70 +4464,282 @@ class TreeAncestor:
 pacakge main
 
 type TreeAncestor struct {
-    depth []int
-    pa    [][]int
+	n        int
+	m        int
+	depth    []int
+	pa       [][]int
+	distance []int
 }
 
-func Constructor(edges [][]int) *TreeAncestor {
-    n := len(edges) + 1
-    m := bits.Len(uint(n))
-    g := make([][]int, n)
-    for _, e := range edges {
-        x, y := e[0], e[1] // 节点编号从 0 开始
-        g[x] = append(g[x], y)
-        g[y] = append(g[y], x)
+func Constructor(edges [][]int) TreeAncestor {
+	n := len(edges) + 1
+	graph := make(map[int][][]int, n)
+	for _, edge := range edges {
+		u, v, w := edge[0], edge[1], edge[2]
+		graph[u] = append(graph[u], []int{v, w})
+		graph[v] = append(graph[v], []int{u, w})
+	}
+
+	m := bits.Len(uint(n))
+	depth := make([]int, n)
+	pa := make([][]int, n)
+	distance := make([]int, n)
+	for i := range pa {
+		pa[i] = make([]int, m)
+	}
+
+	var dfs func(node, parent int)
+	dfs = func(node, parent int) {
+		pa[node][0] = parent
+		for _, child := range graph[node] {
+			c, w := child[0], child[1]
+			if c == parent {
+				continue
+			}
+			depth[c] = depth[node] + 1
+			distance[c] = distance[node] + w
+			dfs(c, node)
+		}
+	}
+
+	dfs(0, -1)
+	for j := range m - 1 {
+		for i := range n {
+			if pa[i][j] != -1 {
+				pa[i][j+1] = pa[pa[i][j]][j]
+			} else {
+				pa[i][j+1] = -1
+			}
+		}
+	}
+
+	return TreeAncestor{
+		n:        n,
+		m:        m,
+		depth:    depth,
+		pa:       pa,
+		distance: distance,
+	}
+}
+
+func (ta *TreeAncestor) GetKthAncestor(node, k int) int {
+	for ; k > 0 && node != -1; k &= k - 1 {
+		node = ta.pa[node][bits.TrailingZeros(uint(k))]
+	}
+	return node
+}
+
+func (ta *TreeAncestor) GetLCA(u, v int) int {
+	if ta.depth[u] > ta.depth[v] {
+		u, v = v, u
+	}
+	v = ta.GetKthAncestor(v, ta.depth[v]-ta.depth[u])
+	if v == u {
+		return u
+	}
+	for i := ta.m - 1; i >= 0; i-- {
+		if ta.pa[u][i] != ta.pa[v][i] {
+			u = ta.pa[u][i]
+			v = ta.pa[v][i]
+		}
+	}
+	return ta.pa[u][0]
+}
+
+func (ta *TreeAncestor) GetDistance(u, v int) int {
+	lca := ta.GetLCA(u, v)
+	return ta.distance[u] + ta.distance[v] - 2*ta.distance[lca]
+}
+
+func (t *TreeAncestor) FindDistance(x, d int) int {
+	d = t.distance[x] - d
+	for j := t.m - 1; j >= 0; j-- {
+		if p := t.pa[x][j]; p != -1 && t.distance[p] >= d {
+			x = p
+		}
+	}
+	return x
+}
+```
+
+```c++
+class TreeAncestor {
+  int n;
+  int m;
+  vector<int> depth;
+  void dfs(int node, int parent,
+           const unordered_map<int, vector<array<int, 2>>> &graph) {
+    pa[node][0] = parent;
+
+    auto it = graph.find(node);
+    if (it == graph.end()) {
+      return;
+    }
+    for (const auto &[child, weight] : it->second) {
+      if (child == parent)
+        continue;
+      depth[child] = depth[node] + 1;
+      distance[child] = distance[node] + weight;
+      dfs(child, node, graph);
+    }
+  }
+
+public:
+  vector<vector<int>> pa;
+  vector<uint64_t> distance;
+
+  explicit TreeAncestor(const vector<vector<int>> &edges)
+      : n(edges.size() + 1), m(32 - __builtin_clz(n)), depth(n, 0),
+        pa(n, vector<int>(m, -1)), distance(n, 0) {
+    unordered_map<int, vector<array<int, 2>>> graph(n);
+    for (const auto &edge : edges) {
+      int u = edge[0], v = edge[1], w = edge[2];
+      graph[u].push_back({v, w});
+      graph[v].push_back({u, w});
     }
 
-    depth := make([]int, n)
-    pa := make([][]int, n)
-    var dfs func(int, int)
-    dfs = func(x, fa int) {
-        pa[x] = make([]int, m)
-        pa[x][0] = fa
-        for _, y := range g[x] {
-            if y != fa {
-                depth[y] = depth[x] + 1
-                dfs(y, x)
+    dfs(0, -1, graph);
+    for (int j = 1; j < m; ++j) {
+      for (int i = 0; i < n; ++i) {
+        if (pa[i][j - 1] != -1) {
+          pa[i][j] = pa[pa[i][j - 1]][j - 1];
+        }
+      }
+    }
+  }
+
+  ~TreeAncestor() = default;
+
+  int getKthAncestor(int node, int k) {
+    for (; k > 0 && node != -1; k &= k - 1) {
+      node = pa[node][31 - __builtin_clz(k & -k)];
+    }
+    return node;
+  }
+
+  int getLCA(int u, int v) {
+    if (depth[u] > depth[v])
+      swap(u, v);
+    int diff = depth[v] - depth[u];
+    v = getKthAncestor(v, diff);
+    if (u == v)
+      return u;
+    for (int j = m - 1; j >= 0; --j) {
+      if (pa[u][j] != pa[v][j]) {
+        u = pa[u][j];
+        v = pa[v][j];
+      }
+    }
+    return pa[u][0];
+  }
+
+  int getDistance(int u, int v) {
+    int lca = getLCA(u, v);
+    return distance[u] + distance[v] - 2 * distance[lca];
+  }
+
+  int findDistance(int u, uint64_t d) {
+    d = distance[u] - d;
+    for (int j = m - 1; j >= 0; --j) {
+      int p = pa[u][j];
+      if (p != -1 && distance[p] >= d) {
+        u = p;
+      }
+    }
+    return u;
+  }
+};
+```
+
+```java
+class TreeAncestor {
+    public final int[][] pa;
+    private final int[] depth;
+    public final long[] distance;
+    private final int m;
+
+    private void dfs(int node, int parent, Map<Integer, Integer>[] graph) {
+        pa[node][0] = parent;
+        if (graph[node] == null) {
+            return;
+        }
+        // graph foreach
+        for (Map.Entry<Integer, Integer> entry : graph[node].entrySet()) {
+            int c = entry.getKey(), w = entry.getValue();
+            if (c == parent) continue;
+            depth[c] = depth[node] + 1;
+            distance[c] = distance[node] + w;
+            dfs(c, node, graph);
+        }
+    }
+    public TreeAncestor(int[][] edges) {
+        int n = edges.length + 1;
+        m = 32 - Integer.numberOfLeadingZeros(n);
+
+        pa = new int[n][m];
+        depth = new int[n];
+        Arrays.fill(depth, 0);
+        distance = new long[n];
+        Arrays.fill(distance, 0);
+
+        Map<Integer, Integer>[] graph = new Map[n];
+        for (int[] edge : edges) {
+            int u = edge[0], v = edge[1], w = edge[2];
+            graph[u] = graph[u] == null ? new HashMap<>() : graph[u];
+            graph[u].put(v, w);
+            graph[v] = graph[v] == null ? new HashMap<>() : graph[v];
+            graph[v].put(u, w);
+        }
+
+        dfs(0, -1, graph);
+
+        for (int j = 1; j < m; j++) {
+            for (int i = 0; i < n; i++) {
+                if (pa[i][j - 1] != -1) {
+                    pa[i][j] = pa[pa[i][j - 1]][j - 1];
+                } else {
+                    pa[i][j] = -1;
+                }
             }
         }
     }
-    dfs(0, -1)
 
-    for i := range m - 1 {
-        for x := range n {
-            if p := pa[x][i]; p != -1 {
-                pa[x][i+1] = pa[p][i]
-            } else {
-                pa[x][i+1] = -1
+    public int getKthAncestor(int node, int k) {
+        for (; node != -1 && k > 0; k &= k - 1) {
+            node = pa[node][Integer.numberOfTrailingZeros(k&-k)];
+        }
+        return node;
+    }
+
+    public int getLCA(int u, int v) {
+        if (depth[u] > depth[v]) {
+            int tmp = u;
+            u = v;
+            v = tmp;
+        }
+        v = getKthAncestor(v, depth[v] - depth[u]);
+        if (v == u) {
+            return u;
+        }
+        for (int j = m - 1; j >= 0; j--) {
+            if (pa[u][j] != pa[v][j]) {
+                u = pa[u][j];
+                v = pa[v][j];
             }
         }
+        return pa[u][0];
     }
-    return &TreeAncestor{depth, pa}
-}
 
-func (t *TreeAncestor) GetKthAncestor(node, k int) int {
-    for ; k > 0; k &= k - 1 {
-        node = t.pa[node][bits.TrailingZeros(uint(k))]
-    }
-    return node
-}
-
-// 返回 x 和 y 的最近公共祖先（节点编号从 0 开始）
-func (t *TreeAncestor) GetLCA(x, y int) int {
-    if t.depth[x] > t.depth[y] {
-        x, y = y, x
-    }
-    y = t.GetKthAncestor(y, t.depth[y]-t.depth[x]) // 使 y 和 x 在同一深度
-    if y == x {
-        return x
-    }
-    for i := len(t.pa[x]) - 1; i >= 0; i-- {
-        px, py := t.pa[x][i], t.pa[y][i]
-        if px != py {
-            x, y = px, py // 同时往上跳 2^i 步
+    public int findDistance(int u, long d) {
+        d = distance[u] - d;
+        for (int j = m-1; j >= 0; --j) {
+            int p = pa[u][j];
+            if (p != -1 && distance[p] >= d) {
+                u = p;
+            }
         }
+        return u;
     }
-    return t.pa[x][0]
 }
 ```
 
@@ -4492,7 +4751,7 @@ func (t *TreeAncestor) GetLCA(x, y int) int {
     2. 查询区间 `[L, R]` 时，取最大的 $`k`$ 使得 $`2^k \leq R-L+1`$，比较 `st[k][L]` 和 `st[k][R-2^k+1]`。
 - **时间复杂度**：预处理 $`O(n \log n)`$，查询 $`O(1)`$。
 
-#### 3. **快速幂**
+#### 快速幂
 
 - **问题**：高效计算 $`a^b \mod p`$。
 - **倍增实现**：
