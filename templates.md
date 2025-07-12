@@ -61,12 +61,17 @@
         - [重复元素子集](#重复元素子集)
 - [数学](#数学)
     - [费马平方和定理](#费马平方和定理)
+    - [组合数](#组合数)
+    - [质数](#质数)
 - [字符串](#字符串)
     - [KMP算法](#kmp算法模板)
 - [其他](#其他)
     - [LRU缓存](#lru缓存)
     - [倍增](#倍增)
-
+        - [最近公共祖先](#最近公共祖先)
+        - [快速幂](#快速幂)
+    - [log trick](#log-trick)
+    - [正难则反](#正难则反)
 ---
 
 # 数组
@@ -1549,6 +1554,7 @@ class UnionFind:
     def __init__(self, size):
         self.parent = list(range(size))
         self.rank = [1] * size
+        self.size = size
 
     def find(self, x):
         while self.parent[x] != x:
@@ -1570,6 +1576,7 @@ class UnionFind:
             self.parent[root_x] = root_y
             if self.rank[root_x] == self.rank[root_y]:
                 self.rank[root_y] += 1
+        self.size -= 1
         return True
 
     def is_connected(self, x, y):
@@ -1582,12 +1589,14 @@ package main
 type UnionFind struct {
     parent []int
     rank   []int
+	cc int
 }
 
 func NewUnionFind(size int) *UnionFind {
     uf := &UnionFind{
         parent: make([]int, size),
         rank:   make([]int, size),
+		cc: size,
     }
     for i := range uf.parent {
         uf.parent[i] = i
@@ -1621,6 +1630,7 @@ func (uf *UnionFind) Union(x, y int) bool {
             uf.rank[rootY]++
         }
     }
+	uf.cc-- // 合并后集合数减少
     return true
 }
 
@@ -1662,6 +1672,51 @@ public:
         return size[find(x)];
     }
 };
+```
+```java
+class UnionFind {
+    private int[] parent;
+    private int[] size;
+    private int count;
+
+    public UnionFind(int n) {
+        parent = new int[n];
+        size = new int[n];
+        count = n;
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
+            size[i] = 1;
+        }
+    }
+
+    public int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]); // Path compression
+        }
+        return parent[x];
+    }
+
+    public boolean union(int x, int y) {
+        int px = find(x);
+        int py = find(y);
+        if (px == py) {
+            return false; // Already in the same set
+        }
+        if (size[px] < size[py]) {
+            parent[px] = py;
+            size[py] += size[px];
+        } else {
+            parent[py] = px;
+            size[px] += size[py];
+        }
+        count--;
+        return true; // Union successful
+    }
+
+    public int getCount() {
+        return count;
+    }
+}
 ```
 
 ---
@@ -2072,8 +2127,7 @@ class DynamicSegmentTree:
             return node.val
         self._push_down(node, l, r)
         mid = (l + r) // 2
-        return self._query(node.left, l, mid, ql, qr) +
-            self._query(node.right, mid + 1, r, ql, qr)
+        return self._query(node.left, l, mid, ql, qr) + self._query(node.right, mid + 1, r, ql, qr)
 
     def query_range(self, l, r):
         """查询区间 [l, r] 的和"""
@@ -2246,8 +2300,7 @@ class DynamicSegmentTree:
         self._push_down(node, l, r)
         mid = (l + r) // 2
         # 聚合子查询结果（根据场景修改合并逻辑）
-        return self._query(node.left, l, mid, ql, qr) +
-            self._query(node.right, mid + 1, r, ql, qr)
+        return self._query(node.left, l, mid, ql, qr) + self._query(node.right, mid + 1, r, ql, qr)
 
     def query_range(self, l, r):
         return self._query(self.root, self.start, self.end, l, r)
@@ -2340,8 +2393,7 @@ class SumSegmentTree:
             return node.val
         self._push_down(node, l, r)
         mid = (l + r) // 2
-        return self._query(node.left, l, mid, ql, qr) +
-            self._query(node.right, mid + 1, r, ql, qr)
+        return self._query(node.left, l, mid, ql, qr) + self._query(node.right, mid + 1, r, ql, qr)
 
     def query_range(self, l, r):
         return self._query(self.root, self.start, self.end, l, r)
@@ -2885,6 +2937,37 @@ $$
 | 交替符号和         | $` 0 `$（当 $` n \geq 1 `$） | 二项式定理代入负值 |
 
 这些公式在概率论、组合优化和算法分析中有广泛应用，例如动态规划中的状态转移计数。
+
+
+## 质数
+
+### 求N以内的所有质数
+
+```python
+def primes(n):
+    is_prime = [True] * (n + 1)
+    is_prime[0] = is_prime[1] = False  # 0和1不是质数
+    p = 2
+    while p * p <= n:
+        if is_prime[p]:
+            for i in range(p * p, n + 1, p):
+                is_prime[i] = False
+        p += 1
+    return [p for p in range(2, n + 1) if is_prime[p]]
+```
+
+### 求N以内每个数的不同质因子个数
+
+```python
+def count_distinct_prime_factors(n):
+    count = [0] * (n + 1)
+    
+    for p in range(2, n + 1):
+        if count[p] == 0:
+            for j in range(p, n + 1, p):
+                count[j] += 1
+    return count
+```
 
 ---
 
@@ -3509,6 +3592,35 @@ func largestPathValue(colors string, edges [][]int) (ans int) {
 # 二进制
 
 ## 位运算
+
+### 取最高位
+
+```c++
+int highBit(unsigned int n) {
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    return 31 - __builtin_clz((n + 1) >> 1);
+}
+```
+
+```golang
+31 - bits.LeadingZeros32(uint32(n))
+```
+
+```java
+31 - Integer.numberOfLeadingZeros(k - 1);
+```
+
+### 取最低位
+
+```c++
+int lowBit(int n) {
+    return n & -n;  // 等价于 n & (n ^ (n - 1))
+}
+```
 
 ## 异或
 
@@ -4351,7 +4463,7 @@ Table），使得每次查询或操作的时间复杂度从线性降低到对数
 
 ### **典型应用场景**
 
-#### 1. **最近公共祖先（LCA）**
+#### 最近公共祖先
 
 - **问题**：在树中快速找到两个节点的最近公共祖先。
 - **倍增实现**：
@@ -4417,70 +4529,282 @@ class TreeAncestor:
 pacakge main
 
 type TreeAncestor struct {
-    depth []int
-    pa    [][]int
+	n        int
+	m        int
+	depth    []int
+	pa       [][]int
+	distance []int
 }
 
-func Constructor(edges [][]int) *TreeAncestor {
-    n := len(edges) + 1
-    m := bits.Len(uint(n))
-    g := make([][]int, n)
-    for _, e := range edges {
-        x, y := e[0], e[1] // 节点编号从 0 开始
-        g[x] = append(g[x], y)
-        g[y] = append(g[y], x)
+func Constructor(edges [][]int) TreeAncestor {
+	n := len(edges) + 1
+	graph := make(map[int][][]int, n)
+	for _, edge := range edges {
+		u, v, w := edge[0], edge[1], edge[2]
+		graph[u] = append(graph[u], []int{v, w})
+		graph[v] = append(graph[v], []int{u, w})
+	}
+
+	m := bits.Len(uint(n))
+	depth := make([]int, n)
+	pa := make([][]int, n)
+	distance := make([]int, n)
+	for i := range pa {
+		pa[i] = make([]int, m)
+	}
+
+	var dfs func(node, parent int)
+	dfs = func(node, parent int) {
+		pa[node][0] = parent
+		for _, child := range graph[node] {
+			c, w := child[0], child[1]
+			if c == parent {
+				continue
+			}
+			depth[c] = depth[node] + 1
+			distance[c] = distance[node] + w
+			dfs(c, node)
+		}
+	}
+
+	dfs(0, -1)
+	for j := range m - 1 {
+		for i := range n {
+			if pa[i][j] != -1 {
+				pa[i][j+1] = pa[pa[i][j]][j]
+			} else {
+				pa[i][j+1] = -1
+			}
+		}
+	}
+
+	return TreeAncestor{
+		n:        n,
+		m:        m,
+		depth:    depth,
+		pa:       pa,
+		distance: distance,
+	}
+}
+
+func (ta *TreeAncestor) GetKthAncestor(node, k int) int {
+	for ; k > 0 && node != -1; k &= k - 1 {
+		node = ta.pa[node][bits.TrailingZeros(uint(k))]
+	}
+	return node
+}
+
+func (ta *TreeAncestor) GetLCA(u, v int) int {
+	if ta.depth[u] > ta.depth[v] {
+		u, v = v, u
+	}
+	v = ta.GetKthAncestor(v, ta.depth[v]-ta.depth[u])
+	if v == u {
+		return u
+	}
+	for i := ta.m - 1; i >= 0; i-- {
+		if ta.pa[u][i] != ta.pa[v][i] {
+			u = ta.pa[u][i]
+			v = ta.pa[v][i]
+		}
+	}
+	return ta.pa[u][0]
+}
+
+func (ta *TreeAncestor) GetDistance(u, v int) int {
+	lca := ta.GetLCA(u, v)
+	return ta.distance[u] + ta.distance[v] - 2*ta.distance[lca]
+}
+
+func (t *TreeAncestor) FindDistance(x, d int) int {
+	d = t.distance[x] - d
+	for j := t.m - 1; j >= 0; j-- {
+		if p := t.pa[x][j]; p != -1 && t.distance[p] >= d {
+			x = p
+		}
+	}
+	return x
+}
+```
+
+```c++
+class TreeAncestor {
+  int n;
+  int m;
+  vector<int> depth;
+  void dfs(int node, int parent,
+           const unordered_map<int, vector<array<int, 2>>> &graph) {
+    pa[node][0] = parent;
+
+    auto it = graph.find(node);
+    if (it == graph.end()) {
+      return;
+    }
+    for (const auto &[child, weight] : it->second) {
+      if (child == parent)
+        continue;
+      depth[child] = depth[node] + 1;
+      distance[child] = distance[node] + weight;
+      dfs(child, node, graph);
+    }
+  }
+
+public:
+  vector<vector<int>> pa;
+  vector<uint64_t> distance;
+
+  explicit TreeAncestor(const vector<vector<int>> &edges)
+      : n(edges.size() + 1), m(32 - __builtin_clz(n)), depth(n, 0),
+        pa(n, vector<int>(m, -1)), distance(n, 0) {
+    unordered_map<int, vector<array<int, 2>>> graph(n);
+    for (const auto &edge : edges) {
+      int u = edge[0], v = edge[1], w = edge[2];
+      graph[u].push_back({v, w});
+      graph[v].push_back({u, w});
     }
 
-    depth := make([]int, n)
-    pa := make([][]int, n)
-    var dfs func(int, int)
-    dfs = func(x, fa int) {
-        pa[x] = make([]int, m)
-        pa[x][0] = fa
-        for _, y := range g[x] {
-            if y != fa {
-                depth[y] = depth[x] + 1
-                dfs(y, x)
+    dfs(0, -1, graph);
+    for (int j = 1; j < m; ++j) {
+      for (int i = 0; i < n; ++i) {
+        if (pa[i][j - 1] != -1) {
+          pa[i][j] = pa[pa[i][j - 1]][j - 1];
+        }
+      }
+    }
+  }
+
+  ~TreeAncestor() = default;
+
+  int getKthAncestor(int node, int k) {
+    for (; k > 0 && node != -1; k &= k - 1) {
+      node = pa[node][31 - __builtin_clz(k & -k)];
+    }
+    return node;
+  }
+
+  int getLCA(int u, int v) {
+    if (depth[u] > depth[v])
+      swap(u, v);
+    int diff = depth[v] - depth[u];
+    v = getKthAncestor(v, diff);
+    if (u == v)
+      return u;
+    for (int j = m - 1; j >= 0; --j) {
+      if (pa[u][j] != pa[v][j]) {
+        u = pa[u][j];
+        v = pa[v][j];
+      }
+    }
+    return pa[u][0];
+  }
+
+  int getDistance(int u, int v) {
+    int lca = getLCA(u, v);
+    return distance[u] + distance[v] - 2 * distance[lca];
+  }
+
+  int findDistance(int u, uint64_t d) {
+    d = distance[u] - d;
+    for (int j = m - 1; j >= 0; --j) {
+      int p = pa[u][j];
+      if (p != -1 && distance[p] >= d) {
+        u = p;
+      }
+    }
+    return u;
+  }
+};
+```
+
+```java
+class TreeAncestor {
+    public final int[][] pa;
+    private final int[] depth;
+    public final long[] distance;
+    private final int m;
+
+    private void dfs(int node, int parent, Map<Integer, Integer>[] graph) {
+        pa[node][0] = parent;
+        if (graph[node] == null) {
+            return;
+        }
+        // graph foreach
+        for (Map.Entry<Integer, Integer> entry : graph[node].entrySet()) {
+            int c = entry.getKey(), w = entry.getValue();
+            if (c == parent) continue;
+            depth[c] = depth[node] + 1;
+            distance[c] = distance[node] + w;
+            dfs(c, node, graph);
+        }
+    }
+    public TreeAncestor(int[][] edges) {
+        int n = edges.length + 1;
+        m = 32 - Integer.numberOfLeadingZeros(n);
+
+        pa = new int[n][m];
+        depth = new int[n];
+        Arrays.fill(depth, 0);
+        distance = new long[n];
+        Arrays.fill(distance, 0);
+
+        Map<Integer, Integer>[] graph = new Map[n];
+        for (int[] edge : edges) {
+            int u = edge[0], v = edge[1], w = edge[2];
+            graph[u] = graph[u] == null ? new HashMap<>() : graph[u];
+            graph[u].put(v, w);
+            graph[v] = graph[v] == null ? new HashMap<>() : graph[v];
+            graph[v].put(u, w);
+        }
+
+        dfs(0, -1, graph);
+
+        for (int j = 1; j < m; j++) {
+            for (int i = 0; i < n; i++) {
+                if (pa[i][j - 1] != -1) {
+                    pa[i][j] = pa[pa[i][j - 1]][j - 1];
+                } else {
+                    pa[i][j] = -1;
+                }
             }
         }
     }
-    dfs(0, -1)
 
-    for i := range m - 1 {
-        for x := range n {
-            if p := pa[x][i]; p != -1 {
-                pa[x][i+1] = pa[p][i]
-            } else {
-                pa[x][i+1] = -1
+    public int getKthAncestor(int node, int k) {
+        for (; node != -1 && k > 0; k &= k - 1) {
+            node = pa[node][Integer.numberOfTrailingZeros(k&-k)];
+        }
+        return node;
+    }
+
+    public int getLCA(int u, int v) {
+        if (depth[u] > depth[v]) {
+            int tmp = u;
+            u = v;
+            v = tmp;
+        }
+        v = getKthAncestor(v, depth[v] - depth[u]);
+        if (v == u) {
+            return u;
+        }
+        for (int j = m - 1; j >= 0; j--) {
+            if (pa[u][j] != pa[v][j]) {
+                u = pa[u][j];
+                v = pa[v][j];
             }
         }
+        return pa[u][0];
     }
-    return &TreeAncestor{depth, pa}
-}
 
-func (t *TreeAncestor) GetKthAncestor(node, k int) int {
-    for ; k > 0; k &= k - 1 {
-        node = t.pa[node][bits.TrailingZeros(uint(k))]
-    }
-    return node
-}
-
-// 返回 x 和 y 的最近公共祖先（节点编号从 0 开始）
-func (t *TreeAncestor) GetLCA(x, y int) int {
-    if t.depth[x] > t.depth[y] {
-        x, y = y, x
-    }
-    y = t.GetKthAncestor(y, t.depth[y]-t.depth[x]) // 使 y 和 x 在同一深度
-    if y == x {
-        return x
-    }
-    for i := len(t.pa[x]) - 1; i >= 0; i-- {
-        px, py := t.pa[x][i], t.pa[y][i]
-        if px != py {
-            x, y = px, py // 同时往上跳 2^i 步
+    public int findDistance(int u, long d) {
+        d = distance[u] - d;
+        for (int j = m-1; j >= 0; --j) {
+            int p = pa[u][j];
+            if (p != -1 && distance[p] >= d) {
+                u = p;
+            }
         }
+        return u;
     }
-    return t.pa[x][0]
 }
 ```
 
@@ -4492,7 +4816,7 @@ func (t *TreeAncestor) GetLCA(x, y int) int {
     2. 查询区间 `[L, R]` 时，取最大的 $`k`$ 使得 $`2^k \leq R-L+1`$，比较 `st[k][L]` 和 `st[k][R-2^k+1]`。
 - **时间复杂度**：预处理 $`O(n \log n)`$，查询 $`O(1)`$。
 
-#### 3. **快速幂**
+#### 快速幂
 
 - **问题**：高效计算 $`a^b \mod p`$。
 - **倍增实现**：
@@ -4669,4 +4993,46 @@ def pow_mul(a: List[List[int]], n: int, f0: List[List[int]], mod: int = 1000_000
 
 理解倍增的核心在于掌握**二进制分解**和**跳转表的预处理逻辑**，它是高效解决许多算法问题的关键技巧。
 
+
+## log-trick
+
+### gcd
+
+记录最左侧gcd区间
+```python3
+from math import gcd
+
+gs = []
+for i, num in enumerate(nums):
+    gs.append([[v, j] for v, j in gs[i - 1]] if i > 0 else [])
+    g = gs[i]
+    g.append([num, i])
+    j = 0
+    for p in g:
+        p[0] = gcd(p[0], num)
+        if g[j][0] != p[0]:
+            j += 1
+            g[j] = p
+    del g[j + 1:]
+```
+
+记录最右侧gcd区间
+```python3
+from math import gcd
+
+
+g = []
+for i, x in enumerate(nums):
+    g.append([x, i])
+
+    j = 0
+    for p in g:
+        p[0] = gcd(p[0], x)
+        if g[j][0] != p[0]:
+            j += 1
+            g[j] = p
+        else:
+            g[j][1] = p[1]
+    del g[j + 1:]
+```
 ----
