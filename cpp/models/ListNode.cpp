@@ -4,40 +4,46 @@
 
 #include "ListNode.h"
 
-ListNode *IntArrayToListNode(std::vector<int> &arr) {
-    auto dummy = new ListNode(), p = dummy;
+ListNode *IntArrayToListNode(const std::vector<int> &arr) {
+    ListNode dummy = ListNode();
+    ListNode *p = &dummy;
     for (auto val : arr) {
         p->next = new ListNode(val);
         p = p->next;
     }
-    return dummy->next;
+    p = dummy.next;
+    dummy.next = nullptr; // Prevent memory leak
+    return p;
 }
 
-std::vector<int> &ListNodeToIntArray(ListNode *head) {
-    auto *arr = new std::vector<int>();
+std::vector<int> ListNodeToIntArray(ListNode *head) {
+    std::vector<int> arr;
     while (head != nullptr) {
-        arr->push_back(head->val);
+        arr.push_back(head->val);
         head = head->next;
     }
-    return *arr;
+    return arr;
 }
 
-ListNode *IntArrayToListNodeCycle(std::vector<int> &arr, int pos) {
-    auto dummy = new ListNode(), p = dummy;
+ListNode *IntArrayToListNodeCycle(const std::vector<int> &arr, int pos) {
+    ListNode dummy = ListNode();
+    ListNode *p = &dummy;
     ListNode *cycle = nullptr;
-    for (int i = 0; i < static_cast<int>(arr.size()); i++) {
+    for (size_t i = 0; i < arr.size(); ++i) {
         p->next = new ListNode(arr[i]);
         p = p->next;
-        if (i == pos) {
+        if (static_cast<int>(i) == pos) {
             cycle = p;
         }
     }
     p->next = cycle;
-    return dummy->next;
+    p = dummy.next;
+    dummy.next = nullptr; // Prevent memory leak
+    return p;
 }
 
 std::tuple<ListNode *, ListNode *>
-IntArrayToIntersectionListNode(int iv, std::vector<int> &arr1, std::vector<int> &arr2, int idx_a, int idx_b) {
+IntArrayToIntersectionListNode(int iv, const std::vector<int> &arr1, const std::vector<int> &arr2, int idx_a, int idx_b) {
     auto headA = IntArrayToListNode(arr1);
     if (iv == 0 || idx_a == static_cast<int>(arr1.size()) || idx_b == static_cast<int>(arr2.size())) {
         return {headA, IntArrayToListNode(arr2)};
