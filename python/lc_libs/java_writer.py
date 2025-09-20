@@ -1,7 +1,8 @@
 import logging
-import os.path
+import os
 from collections import deque, defaultdict
 import re
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from python.constants import SOLUTION_TEMPLATE_JAVA
@@ -13,8 +14,9 @@ class JavaWriter(LanguageWriter):
         super().__init__()
         self.solution_file = "Solution.java"
         self.main_folder = "qubhjava/test"
-        self.lang_env_commands = [["mvn", "-v"]]
-        self.test_commands = [["mvn", "test", "-Dtest=qubhjava.test.TestMain"]]
+        mvn_exec = "mvn.cmd" if os.name == "nt" else "mvn"
+        self.lang_env_commands = [[mvn_exec, "-v"]]
+        self.test_commands = [[mvn_exec, "test", "-Dtest=qubhjava.test.TestMain"]]
 
     def write_solution(self, code_default: str, code: str = None, problem_id: str = "",
                        problem_folder: str = "") -> str:
@@ -116,16 +118,16 @@ class JavaWriter(LanguageWriter):
             "\n\n" + "\n".join(end_extra) if end_extra else "",
         )
 
-    def get_solution_code(self, root_path, problem_folder: str, problem_id: str) -> Tuple[str, str]:
+    def get_solution_code(self, root_path: Path, problem_folder: str, problem_id: str) -> Tuple[str, str]:
         if not problem_id:
             problem_id = self.get_test_problem_id(root_path, problem_folder)
         if not problem_id:
             return "", problem_id
-        file_path = os.path.join(root_path, problem_folder, f"{problem_folder}_{problem_id}", self.solution_file)
-        if not os.path.exists(file_path):
+        file_path = root_path / problem_folder / f"{problem_folder}_{problem_id}" / self.solution_file
+        if not file_path.exists():
             return "", problem_id
         final_codes = deque([])
-        with open(file_path, 'r', encoding="utf-8") as f:
+        with file_path.open('r', encoding="utf-8") as f:
             content = f.read()
             solution_class_idx = content.find("public class Solution extends BaseSolution {")
             logging.debug("solution_class_idx: %s", solution_class_idx)
@@ -166,10 +168,14 @@ class JavaWriter(LanguageWriter):
                 return f"{rt_type} {variable_name} = Float.parseFloat({input_name});"
             case "double":
                 return f"{rt_type} {variable_name} = Double.parseDouble({input_name});"
+            case "double[]":
+                return f"{rt_type} {variable_name} = jsonArrayToDoubleArray({input_name});"
             case "long":
                 return f"{rt_type} {variable_name} = Long.parseLong({input_name});"
             case "int[]":
                 return f"{rt_type} {variable_name} = jsonArrayToIntArray({input_name});"
+            case "long[]":
+                return f"{rt_type} {variable_name} = jsonArrayToLongArray({input_name});"
             case "String":
                 return f"{rt_type} {variable_name} = jsonStringToString({input_name});"
             case "String[]":
@@ -178,6 +184,10 @@ class JavaWriter(LanguageWriter):
                 return f"{rt_type} {variable_name} = jsonArrayToString2DArray({input_name});"
             case "int[][]":
                 return f"{rt_type} {variable_name} = jsonArrayToInt2DArray({input_name});"
+            case "long[][]":
+                return f"{rt_type} {variable_name} = jsonArrayToLong2DArray({input_name});"
+            case "boolean[]":
+                return f"{rt_type} {variable_name} = jsonArrayToBooleanArray({input_name});"
             case "List<Integer>":
                 return f"{rt_type} {variable_name} = jsonArrayToIntList({input_name});"
             case "List<List<Integer>>":
@@ -332,7 +342,12 @@ class JavaWriter(LanguageWriter):
                 return_part = "ListNode.LinkedListToIntArray({}({}))".format(return_func, ", ".join(variables))
         elif "TreeNode" in return_type:
             additional_import.add("import qubhjava.models.TreeNode;")
-            return_part = "TreeNode.TreeNodeToArray({}({}))".format(return_func, ", ".join(variables))
+            if return_type == "List<TreeNode>":
+                return_part = "TreeNode.TreeNodeListToJsonArray({}({}))".format(return_func, ", ".join(variables))
+            elif return_type == "TreeNode[]":
+                return_part = "TreeNode.TreeNodeArrayToJsonArray({}({}))".format(return_func, ", ".join(variables))
+            else:
+                return_part = "TreeNode.TreeNodeToArray({}({}))".format(return_func, ", ".join(variables))
         elif return_type == "void":
             parse_input.append("{}({});".format(return_func, ", ".join(variables)))
             logging.debug("Void return type, function: {}, variables: {}".format(return_func, variables))
