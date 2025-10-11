@@ -1,8 +1,8 @@
 import logging
-import os
 import re
 from collections import deque
-from typing import Tuple, List, Dict, Any
+from pathlib import Path
+from typing import Tuple, List, Dict, Any, Optional
 
 from python.constants import CARGO_TOML_TEMPLATE_SOLUTION, SOLUTION_TEMPLATE_RUST, \
     SOLUTIONS_TEMPLATE_RUST
@@ -16,36 +16,33 @@ class RustWriter(LanguageWriter):
         self.solution_file = "solution.rs"
         self.main_folder = "rust"
         self.test_executor_folder = "test_executor"
-        self.test_file = "tests/test.rs"
-        self.tests_file = "tests/solutions_test.rs"
+        self.test_file = "tests/solutions_test.rs"
+        self.tests_file = "tests/test.rs"
         self.cargo_file = "Cargo.toml"
         self.lang_env_commands = [["rustc", "--version"], ["cargo", "--version"]]
         self.test_commands = [["cargo", "test", "--test", "solution_test"]]
 
-    def change_test(self, root_path, problem_folder: str, question_id: str):
-        test_file_path = os.path.join(root_path, self.main_folder, self.test_executor_folder, self.test_file)
-        with open(test_file_path, "r", encoding="utf-8") as f:
+    def change_test(self, root_path: Path, problem_folder: str, question_id: str):
+        test_file_path = root_path / self.main_folder / self.test_executor_folder / self.test_file
+        with test_file_path.open("r", encoding="utf-8") as f:
             content = f.read()
-        with open(test_file_path, "w", encoding="utf-8") as f:
+        with test_file_path.open("w", encoding="utf-8") as f:
             lines = content.split("\n")
             for line_idx, line in enumerate(lines):
-                if "const PROBLEM_FOLDER: &str = \"" in line:
-                    f.write(f'const PROBLEM_FOLDER: &str = "{problem_folder}";\n')
-                    continue
-                if "const PROBLEM_ID: &str = \"" in line:
-                    f.write(f'const PROBLEM_ID: &str = "{question_id}";\n')
+                if "const PROBLEMS: [[&str; 2]; 1] = " in line:
+                    f.write(f'const PROBLEMS: [[&str; 2]; 1] = [["{problem_folder}", "{question_id}"]];\n')
                     continue
                 if " as solution;" in line:
                     f.write(f"\tuse solution_{question_id} as solution;\n")
                     continue
                 if line_idx < len(lines) - 1 or line:
                     f.write(f"{line}\n")
-        root_cargo_path = os.path.join(root_path, self.cargo_file)
+        root_cargo_path = root_path / self.cargo_file
         RustWriter.cargo_add_problems(root_cargo_path, [[question_id, problem_folder]])
 
-    def change_tests(self, root_path, problem_ids_folders: list):
-        tests_file_path = os.path.join(root_path, self.main_folder, self.test_executor_folder, self.tests_file)
-        with open(tests_file_path, "w", encoding="utf-8") as f:
+    def change_tests(self, root_path: Path, problem_ids_folders: list):
+        tests_file_path = root_path / self.main_folder / self.test_executor_folder / self.tests_file
+        with tests_file_path.open("w", encoding="utf-8") as f:
             f.write(SOLUTIONS_TEMPLATE_RUST.format(
                 len(problem_ids_folders),
                 ", ".join([f"[\"{problem_folder}\", \"{problem_id}\"]"
@@ -54,6 +51,17 @@ class RustWriter(LanguageWriter):
                              for i, (problem_id, _) in enumerate(problem_ids_folders)]),
                 "\n\t\t\t\t".join([f"{i} => solution{i}::solve," for i in range(len(problem_ids_folders))]),
             ))
+
+    def get_test_problem_id(self, root_path: Path, problem_folder: str) -> Optional[str]:
+        """Get the problem ID from the test file."""
+        test_file_path = root_path / self.main_folder / self.test_executor_folder / self.test_file
+        with test_file_path.open("r", encoding="utf-8") as f:
+            content = f.read()
+        lines = content.split("\n")
+        for line in lines:
+            if "const PROBLEMS: [[&str; 2]; 1] = " in line and f'"{problem_folder}"' in line:
+                return line.split("\"")[3]
+        return None
 
     def write_solution(
             self,
@@ -159,43 +167,27 @@ class RustWriter(LanguageWriter):
         return SOLUTION_TEMPLATE_RUST.format(add_title, "\n".join(import_libs), "pub struct Solution;\n", code,
                                              problem_id, "\n\t".join(solve_part))
 
-    def write_cargo_toml(self, root_path, dir_path, problem_folder: str, problem_id: str):
-        root_cargo_path = os.path.join(root_path, self.cargo_file)
+    def write_cargo_toml(self, root_path: Path, dir_path: Path, problem_folder: str, problem_id: str):
+        root_cargo_path = root_path / self.cargo_file
         RustWriter.cargo_add_problems(root_cargo_path, [[problem_id, problem_folder]])
-        cargo_file_path = os.path.join(dir_path, self.cargo_file)
-        if not os.path.exists(cargo_file_path):
-            with open(cargo_file_path, "w", encoding="utf-8") as f:
+        cargo_file_path = dir_path / self.cargo_file
+        if not cargo_file_path.exists():
+            with cargo_file_path.open("w", encoding="utf-8") as f:
                 f.write(CARGO_TOML_TEMPLATE_SOLUTION.format(problem_id, problem_id, problem_id, problem_id))
 
     def get_solution_code(
-            self, root_path, problem_folder: str, problem_id: str
+            self, root_path: Path, problem_folder: str, problem_id: str
     ) -> Tuple[str, str]:
         if not problem_id:
-            test_file_path = os.path.join(root_path, self.main_folder, self.test_executor_folder, self.test_file)
-            with open(test_file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                for line in content.split("\n"):
-                    if "const PROBLEM_ID: &str = \"" in line:
-                        problem_id = line.split("\"")[1]
-                        break
+            problem_id = self.get_test_problem_id(root_path, problem_folder)
         if not problem_id:
             return "", problem_id
-        file_path = os.path.join(root_path, problem_folder, f"{problem_folder}_{problem_id}", self.solution_file)
-        if not os.path.exists(file_path):
+        file_path = root_path / problem_folder / f"{problem_folder}_{problem_id}" / self.solution_file
+        if not file_path.exists():
             return "", problem_id
         final_codes = deque([])
-        with open(file_path, 'r', encoding="utf-8") as f:
+        with file_path.open('r', encoding="utf-8") as f:
             content = f.read()
-            # start = False
-            # is_obj_question = "object will be instantiated and called as such:" in content
-            # for line in content.split("\n"):
-            #     if (is_obj_question and "use serde_json::{json, Value};" in line) or "pub struct Solution;" in line:
-            #         start = True
-            #         continue
-            #     if "#[cfg(feature = \"solution\")]" in line or f"#[cfg(feature = \"solution_{problem_id}\")]" in line:
-            #         break
-            #     if start:
-            #         final_codes.append(line)
             start_idx = content.find("pub struct Solution;")
             if start_idx == -1:
                 start_idx = content.find("use serde_json::{json, Value};")
@@ -211,7 +203,7 @@ class RustWriter(LanguageWriter):
 
     def run_code(
             self,
-            root_path,
+            root_path: Path,
             problem_folder: str,
             problem_id: str,
             write: bool,
@@ -230,16 +222,8 @@ class RustWriter(LanguageWriter):
         if not write:
             return exec_res
         if not exec_res:
-            with open(
-                    os.path.join(
-                        root_path,
-                        problem_folder,
-                        f"{problem_folder}_{problem_id}",
-                        self.solution_file,
-                    ),
-                    "w",
-                    encoding="utf-8",
-            ) as f:
+            solution_file = root_path / problem_folder / f"{problem_folder}_{problem_id}" / self.solution_file
+            with solution_file.open( "w", encoding="utf-8") as f:
                 code_content = self.write_solution(
                     default_code, code, problem_id, problem_folder
                 )
@@ -382,12 +366,12 @@ class RustWriter(LanguageWriter):
                                       .format(var_name, clean_type, var_idx))
 
     @staticmethod
-    def cargo_add_problems(file_path, problem_ids_folders: list):
-        with open(file_path, "r", encoding="utf-8") as f:
+    def cargo_add_problems(file_path: Path, problem_ids_folders: list):
+        with file_path.open("r", encoding="utf-8") as f:
             content = f.read()
         remain = set((problem_id, problem_folder) for problem_id, problem_folder in problem_ids_folders)
         remain_dependencies = set(remain)
-        with open(file_path, "w", encoding="utf-8") as f:
+        with file_path.open("w", encoding="utf-8") as f:
             member_start = False
             dependencies_start = False
             splits = content.split("\n")
