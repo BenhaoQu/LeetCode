@@ -1,0 +1,30 @@
+import solution
+from typing import *
+from python.object_libs import list_to_linked_list, linked_list_to_list
+
+
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next = next
+
+
+class Solution(solution.Solution):
+    def solve(self, test_input=None):
+        nums0 = test_input
+        head0 = list_to_linked_list(nums0)
+        res = self.removeDuplicateNodes(head0)
+        return linked_list_to_list(res)
+
+    def removeDuplicateNodes(self, head: Optional[ListNode]) -> Optional[ListNode]:
+        s = set()
+        dummy = ListNode(next=head)
+        prev, curr = dummy, head
+        while curr:
+            if curr.val in s:
+                prev.next = curr.next
+            else:
+                prev = curr
+            s.add(curr.val)
+            curr = curr.next
+        return dummy.next

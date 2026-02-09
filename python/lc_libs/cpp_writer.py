@@ -1,12 +1,63 @@
 import logging
-import os.path
 import re
+from pathlib import Path
 from typing import Optional, Tuple
 from python.constants import SOLUTION_TEMPLATE_CPP, TESTCASE_TEMPLATE_CPP
 from collections import deque
 
 from python.lc_libs.language_writer import LanguageWriter
 
+
+def common_memory_free_code(return_part: list, include_libs: list, var_name: str, commented: str = ""):
+    return_part.append(f"{commented}delete {var_name};")
+
+
+def list_memory_free_code(return_part: list, include_libs: list, var_name: str, commented: str = ""):
+    include_libs.append("#include <vector>")
+    return_part.append(f"{commented}for (auto ptr : {var_name}) {{")
+    return_part.append(f"{commented}\tdelete ptr;")
+    return_part.append(f"{commented}}}")
+    return_part.append(f"{var_name}.clear(); // Clear the vector to prevent memory leak")
+
+
+def cycle_memory_free_code(return_part: list, include_libs: list, var_name: str, commented: str = ""):
+    include_libs.append("#include <unordered_set>")
+    return_part.append(f"{commented}std::unordered_set<ListNode*> visited_nodes;")
+    return_part.append(f"{commented}ListNode *temp = {var_name};")
+    return_part.append(f"{commented}while (temp != nullptr) {{")
+    return_part.append(f"{commented}\tvisited_nodes.insert(temp);")
+    return_part.append(f"{commented}\tif (visited_nodes.find(temp->next) != visited_nodes.end()) {{")
+    return_part.append(f"{commented}\t\ttemp->next = nullptr; // Break the cycle")
+    return_part.append(f"{commented}\t\tbreak;")
+    return_part.append(f"{commented}\t}}")
+    return_part.append(f"{commented}\ttemp = temp->next;")
+    return_part.append(f"{commented}}}")
+    return_part.append(f"{commented}delete {var_name}; // Delete the head node to prevent memory leak")
+
+def intersection_memory_free_code(return_part: list, include_libs: list, var_names: list[str], commented: str = ""):
+    include_libs.append("#include <unordered_set>")
+    return_part.append(f"{commented}std::unordered_set<ListNode*> visited_nodes;")
+    return_part.append(f"{commented}ListNode *temp = nullptr, *prev;")
+    for var_name in var_names:
+        return_part.append(f"{commented}temp = {var_name};")
+        return_part.append(f"{commented}prev = nullptr;")
+        return_part.append(f"{commented}while (temp != nullptr) {{")
+        return_part.append(f"{commented}\tif (visited_nodes.find(temp) != visited_nodes.end()) {{")
+        return_part.append(f"{commented}\t\tif (prev != nullptr) {{")
+        return_part.append(f"{commented}\t\t\tprev->next = nullptr; // Break the cycle")
+        return_part.append(f"{commented}\t\t}}")
+        return_part.append(f"{commented}\t\tbreak;")
+        return_part.append(f"{commented}\t}}")
+        return_part.append(f"{commented}\tvisited_nodes.insert(temp);")
+        return_part.append(f"{commented}\tprev = temp;")
+        return_part.append(f"{commented}\ttemp = temp->next;")
+        return_part.append(f"{commented}}}")
+        return_part.append(f"{commented}if (prev != nullptr) {{")
+        return_part.append(f"{commented}\tdelete {var_name}; // Delete the last node to prevent memory leak")
+        return_part.append(f"{commented}}}")
+
+def node_neighbors_memory_free_code(return_part: list, include_libs: list, var_name: str, commented: str = ""):
+    return_part.append(f"{commented}DeleteGraph({var_name}); // Delete the graph to prevent memory leak")
 
 class CppWriter(LanguageWriter):
     def __init__(self) -> None:
@@ -15,9 +66,10 @@ class CppWriter(LanguageWriter):
         self.main_folder = ""
         self.lang_env_commands = [["bazel", "version"]]
         self.test_commands = [
+            ["bazel", "fetch", "--force", "daily"],
             ["bazel", "test", "--cxxopt=-std=c++23", "--cxxopt=-O2", "--cxxopt=-fsanitize=address",
              "--cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1", "--linkopt=-fsanitize=address",
-             "--test_timeout=10","//cpp:solution_test"]
+             "--test_timeout=10","//:daily_test"]
         ]
 
     def write_solution(
@@ -34,6 +86,7 @@ class CppWriter(LanguageWriter):
 
         include_libs = []
         process_variables = []
+        memory_to_free = []
         return_part = []
         comments = False
         if is_solution_code:
@@ -58,10 +111,10 @@ class CppWriter(LanguageWriter):
                 for sp in functions[0].get("args", "").split(",")
             ]
             process_variables.append("\tSolution solution;")
-            if_modify_in_place = CppWriter._process_variables(variables, process_variables, include_libs, code_default,
+            if_modify_in_place = CppWriter._process_variables(variables, process_variables, include_libs, memory_to_free, code_default,
                                                               testcases)
             CppWriter._process_return_part(ret_type, func_name, variables, code_default, return_part, include_libs,
-                                           if_modify_in_place, process_variables)
+                                           if_modify_in_place, process_variables, memory_to_free)
         elif len(functions) > 1:
             process_variables.append(
                 "\tvector<string> operators = json::parse(inputArray[0]);"
@@ -74,7 +127,7 @@ class CppWriter(LanguageWriter):
             for i, f in enumerate(functions):
                 name = f.get("name", "")
                 if name and name[0].isupper() and f.get("ret_type", "") == "":
-                    cur = f"auto obj{i} = make_shared<{name}>("
+                    cur = f"auto obj{i} = make_unique<{name}>("
                     variables = (
                         [[" ".join(sp.strip().split(" ")[:-1]), sp.strip().split(" ")[-1]]
                          for sp in f.get("args", "").split(",")]
@@ -94,7 +147,19 @@ class CppWriter(LanguageWriter):
                             case "TreeNode":
                                 if '#include "cpp/models/TreeNode.h"' not in include_libs:
                                     include_libs.append('#include "cpp/models/TreeNode.h"')
-                                tmp_vars.append(f"JsonArrayToTreeNode(op_values[{i}][{j}])")
+                                process_variables.append(
+                                    f"TreeNode *{var_nm} = JsonArrayToTreeNode(op_values[{i}][{j}]);"
+                                )
+                                tmp_vars.append(var_nm)
+                                memory_to_free.append((common_memory_free_code, var_nm))
+                            case "ListNode":
+                                if '#include "cpp/models/ListNode.h"' not in include_libs:
+                                    include_libs.append('#include "cpp/models/ListNode.h"')
+                                process_variables.append(
+                                    f"ListNode *{var_nm} = IntArrayToListNode(op_values[{i}][{j}].get<vector<int>>());"
+                                )
+                                tmp_vars.append(var_nm)
+                                memory_to_free.append((common_memory_free_code, var_nm))
                             case _:
                                 logging.debug("Unhandled variable type: %s", rt)
                                 tmp_vars.append(f"op_values[{i}][{j}]")
@@ -113,7 +178,7 @@ class CppWriter(LanguageWriter):
                     )
                     class_and_functions[-1].append((func_name, ret_type, variables))
             process_variables.append("vector<json> ans = {nullptr};")
-            process_variables.append("for (size_t i = 1; i < op_values.size(); i++) {")
+            process_variables.append("for (size_t i = 1; i < op_values.size(); ++i) {")
             list_methods = []
             for class_methods in class_and_functions:
                 i = class_methods[1]
@@ -149,7 +214,13 @@ class CppWriter(LanguageWriter):
             process_variables.extend(list_methods)
             process_variables.append("\tans.push_back(nullptr);")
             process_variables.append("}")
-            return_part = ["\treturn ans;"]
+            if memory_to_free:
+                memory_to_free[0][0](return_part, include_libs, memory_to_free[0][1], "\t")
+                for func, m in memory_to_free[1:]:
+                    func(return_part, include_libs, m)
+                return_part.append("return ans;")
+            else:
+                return_part = ["\treturn ans;"]
         return SOLUTION_TEMPLATE_CPP.format(
             "\n".join(include_libs),
             code,
@@ -158,19 +229,17 @@ class CppWriter(LanguageWriter):
         )
 
     def get_solution_code(
-            self, root_path, problem_folder: str, problem_id: str
+            self, root_path: Path, problem_folder: str, problem_id: str
     ) -> Tuple[str, str]:
         if not problem_id:
             problem_id = self.get_test_problem_id(root_path, problem_folder)
         if not problem_id:
             return "", problem_id
-        file_path = os.path.join(
-            root_path, problem_folder, f"{problem_folder}_{problem_id}", "Solution.cpp"
-        )
-        if not os.path.exists(file_path):
+        file_path = root_path / problem_folder / f"{problem_folder}_{problem_id}" / self.solution_file
+        if not file_path.exists():
             return "", problem_id
         final_codes = deque([])
-        with open(file_path, "r", encoding="utf-8") as f:
+        with file_path.open("r", encoding="utf-8") as f:
             content = f.read()
             end_index = content.find("json leetcode::qubh::Solve(string ")
             start_index = content.find("using json = nlohmann::json;")
@@ -179,6 +248,11 @@ class CppWriter(LanguageWriter):
             final_codes.extend(content[start_index:end_index].strip().split("\n"))
         while final_codes and final_codes[0].strip() == "":
             final_codes.popleft()
+        # special libs
+        if "#include <ranges>" in content:
+            # or " ranges::" in content or "std::ranges::" in content:
+            final_codes.appendleft("#include <ranges>\n")
+            logging.debug("Add special lib: <ranges>")
         return "\n".join(final_codes), problem_id
 
     @staticmethod
@@ -214,7 +288,7 @@ class CppWriter(LanguageWriter):
         return functions
 
     @staticmethod
-    def _process_variables(variables, process_variables: list, include_libs: list, code_default: str, testcases=None) -> \
+    def _process_variables(variables, process_variables: list, include_libs: list, memory_to_free: list, code_default: str, testcases=None) -> \
             Optional[str]:
         i = 0
         if_modify_in_place = None
@@ -242,6 +316,7 @@ class CppWriter(LanguageWriter):
                             process_variables.append(
                                 f"ListNode* {variable[1]} = IntArrayToListNodeCycle({variable[1]}_array, position);"
                             )
+                            memory_to_free.append((cycle_memory_free_code, variable[1]))
                             i += 2
                             continue
                         elif (len(variables) == 2 and len(testcases[0]) == 5
@@ -261,6 +336,7 @@ class CppWriter(LanguageWriter):
                                 f"auto tp = IntArrayToIntersectionListNode(iv, {variables[0][1]}_array, {variables[1][1]}_array, skip_a, skip_b);")
                             process_variables.append(f"ListNode *{variables[0][1]} = get<0>(tp);")
                             process_variables.append(f"ListNode *{variables[1][1]} = get<1>(tp);")
+                            memory_to_free.append((intersection_memory_free_code, [variables[0][1], variables[1][1]]))
                             i += 5
                             continue
                         elif len(variables) != len(testcases[0]):
@@ -277,6 +353,7 @@ class CppWriter(LanguageWriter):
                         + variable[-1]
                         + f" = IntArrayToListNode({variable[1]}_array);"
                     )
+                    memory_to_free.append((common_memory_free_code,variable[-1]))
                     if not if_modify_in_place:
                         if_modify_in_place = f"ListNodeToIntArray({variable[-1]})"
                 case "vector<ListNode*>":
@@ -292,7 +369,7 @@ class CppWriter(LanguageWriter):
                         f"auto {variable[-1]} = {rt}({variable[-1]}_arrays.size());"
                     )
                     process_variables.append(
-                        "for (int i = 0; i < " + variable[-1] + ".size(); i++) {"
+                        "for (size_t i = 0; i < " + variable[-1] + ".size(); ++i) {"
                     )
                     process_variables.append(
                         "\t"
@@ -318,6 +395,8 @@ class CppWriter(LanguageWriter):
                             process_variables.append("TreeNode *target = nodes[1];")
                             process_variables.append(
                                 f"TreeNode *cloned = JsonArrayToTreeNode({variable[-1]}_array);")
+                            memory_to_free.append((common_memory_free_code, "original"))
+                            memory_to_free.append((common_memory_free_code, "cloned"))
                             i += 3
                             continue
                         idx = i + 1
@@ -338,6 +417,7 @@ class CppWriter(LanguageWriter):
                             process_variables.append(f"TreeNode *{variable[-1]} = nodes[0], "
                                                      + ", ".join([f"*{variables[j][-1]} = nodes[{j - i}]"
                                                                   for j in range(i + 1, idx)]) + ";")
+                            memory_to_free.append((common_memory_free_code, variable[-1]))
                             i = idx
                             continue
                     process_variables.append(
@@ -352,6 +432,7 @@ class CppWriter(LanguageWriter):
                         + variable[-1]
                         + f" = JsonArrayToTreeNode({variable[-1]}_array);"
                     )
+                    memory_to_free.append((common_memory_free_code, variable[-1]))
                     if not if_modify_in_place:
                         if_modify_in_place = f"TreeNodeToJsonArray({variable[-1]})"
                 case "vector<TreeNode*>":
@@ -390,7 +471,7 @@ class CppWriter(LanguageWriter):
                         f"auto {variable[-1]} = {rt}({variable[-1]}_str.size());"
                     )
                     process_variables.append(
-                        "for (int i = 0; i < " + variable[-1] + ".size(); i++) {"
+                        "for (size_t i = 0; i < " + variable[-1] + ".size(); ++i) {"
                     )
                     process_variables.append(
                         f"\t{variable[-1]}[i] = {variable[-1]}_str[i][0];"
@@ -408,12 +489,12 @@ class CppWriter(LanguageWriter):
                         f" vector<char>({variable[-1]}_str[0].size()));"
                     )
                     process_variables.append(
-                        "for (int i = 0; i < " + variable[-1] + ".size(); i++) {"
+                        "for (size_t i = 0; i < " + variable[-1] + ".size(); ++i) {"
                     )
                     process_variables.append(
-                        "\tfor (int j = 0; j < "
+                        "\tfor (size_t j = 0; j < "
                         + variable[-1]
-                        + "[i].size(); j++) {"
+                        + "[i].size(); ++j) {"
                     )
                     process_variables.append(
                         f"\t\t{variable[-1]}[i][j] = {variable[-1]}_str[i][j][0];"
@@ -436,12 +517,14 @@ class CppWriter(LanguageWriter):
                             + variable[-1]
                             + f" = JsonArrayToTreeNodeNext({variable[-1]}_array);"
                         )
+                        memory_to_free.append((common_memory_free_code, variable[-1]))
                     elif "vector<Node*> neighbors;" in code_default:
                         include_libs.append('#include "cpp/models/NodeNeighbors.h"')
                         process_variables.append(f"vector<vector<int>> {variable[-1]}_arrays ="
                                                  f" json::parse(inputArray.at({i}));")
                         process_variables.append(f"{rt}* {variable[-1]} ="
                                                  f" JsonArrayToNodeNeighbors({variable[-1]}_arrays);")
+                        memory_to_free.append((node_neighbors_memory_free_code, variable[-1]))
                     elif "Node* random;" in code_default:
                         include_libs.append('#include "cpp/models/NodeRandom.h"')
                         process_variables.append(
@@ -450,6 +533,7 @@ class CppWriter(LanguageWriter):
                             + variable[-1]
                             + f" = JsonArrayToNodeRandom(json::parse(inputArray.at({i})));"
                         )
+                        memory_to_free.append((common_memory_free_code, variable[-1]))
                     else:
                         logging.debug(f"Unhandled Node Type variable: {variable}, code: [{code_default}]")
                 case _:
@@ -475,8 +559,12 @@ class CppWriter(LanguageWriter):
                                 process_variables.append(f"for (json ipt: {variable[-1]}_input) {{")
                                 process_variables.append(f"\t{variable[-1]}.emplace_back({class_name.lower()}_from_input(ipt));")
                                 process_variables.append("}")
+                                if "*" in rt:
+                                    memory_to_free.append((list_memory_free_code, variable[-1]))
                             else:
                                 process_variables.append(f"{variable[-1]} = {class_name.lower()}_from_input(inputArray.at({i}))")
+                                if "*" in rt:
+                                    memory_to_free.append((common_memory_free_code, variable[-1]))
                     if not found_defination:
                         process_variables.append(
                             rt
@@ -492,78 +580,178 @@ class CppWriter(LanguageWriter):
 
     @staticmethod
     def _process_return_part(ret_type: str, func_name: str, variables: list, code_default: str, return_part: list,
-                             include_libs: list, if_modify_in_place: Optional[str], process_variables: list):
+                             include_libs: list, if_modify_in_place: Optional[str], process_variables: list, memory_to_free: list):
         if "ListNode" in ret_type:
             # IntArrayToListNodeCycle
             logging.debug(f"Process variables: {process_variables}")
             if any("IntArrayToListNodeCycle" in pv for pv in process_variables):
                 return_part.append(
-                    "\tListNode *res = solution.{}({});".format(
+                    "\tListNode *res_ptr = solution.{}({});".format(
                         func_name, ", ".join([v[-1] for v in variables])
                     )
                 )
-                return_part.append("return res ? res->val : nullptr;")
+                return_part.append("json final_ans = res_ptr ? res_ptr->val : nullptr;")
+                for func, m in memory_to_free:
+                    func(return_part, include_libs, m, "// ")
+                common_memory_free_code(return_part, include_libs, "res_ptr")
+                return_part.append("return final_ans;")
             else:
                 if '#include "cpp/models/ListNode.h"' not in include_libs:
                     include_libs.append('#include "cpp/models/ListNode.h"')
-                return_part.append(
-                    "\treturn ListNodeToIntArray(solution.{}({}));".format(
-                        func_name, ", ".join([v[-1] for v in variables])
+                if "vector<ListNode*>" in ret_type:
+                    return_part.append(
+                        "\tvector<ListNode*> res_ptr_list = solution.{}({});".format(
+                            func_name, ", ".join([v[-1] for v in variables])
+                        )
                     )
-                )
+                    return_part.append("json final_ans = ListNodesToIntArrays(res_ptr_list);")
+                    for func, m in memory_to_free:
+                        func(return_part, include_libs, m, "// ")
+                    list_memory_free_code(return_part, include_libs, "res_ptr_list")
+                else:
+                    return_part.append(
+                        "\tListNode *res_ptr = solution.{}({});".format(
+                            func_name, ", ".join([v[-1] for v in variables]))
+                    )
+                    return_part.append("json final_ans = ListNodeToIntArray(res_ptr);")
+                    for func, m in memory_to_free:
+                        func(return_part, include_libs, m, "// ")
+                    common_memory_free_code(return_part, include_libs, "res_ptr")
+                return_part.append("return final_ans;")
         elif "TreeNode" in ret_type:
             if '#include "cpp/models/TreeNode.h"' not in include_libs:
                 include_libs.append('#include "cpp/models/TreeNode.h"')
-            return_part.append(
-                "\treturn TreeNodeToJsonArray(solution.{}({}));".format(
-                    func_name, ", ".join([v[-1] for v in variables])
+            logging.debug("Return type: %s", ret_type)
+            if ret_type == "vector<TreeNode*>":
+                return_part.append(
+                    "\tvector<TreeNode*> res_ptr_list = solution.{}({});".format(
+                        func_name, ", ".join([v[-1] for v in variables])
+                    )
                 )
-            )
+                return_part.append("json final_ans = TreeNodeArrayToJsonArray(res_ptr_list);")
+                for func, m in memory_to_free:
+                    func(return_part, include_libs, m, "// ")
+                list_memory_free_code(return_part, include_libs, "res_ptr_list")
+            else:
+                return_part.append(
+                    "\tTreeNode *res_ptr = solution.{}({});".format(
+                        func_name, ", ".join([v[-1] for v in variables])
+                    )
+                )
+                return_part.append("json final_ans = TreeNodeToJsonArray(res_ptr);")
+                for func, m in memory_to_free:
+                    func(return_part, include_libs, m, "// ")
+                common_memory_free_code(return_part, include_libs, "res_ptr")
+            return_part.append("return final_ans;")
         elif "Node" in ret_type:
             if ("Node* left;" in code_default and "Node* right;" in code_default
                     and "Node* next;" in code_default):
                 return_part.append(
-                    "\treturn TreeNodeNextToJsonArray(solution.{}({}));".format(
+                    "\tNode *res_ptr = solution.{}({});".format(
                         func_name, ", ".join([v[-1] for v in variables])
                     )
                 )
+                return_part.append("json final_ans = TreeNodeNextToJsonArray(res_ptr);")
+                for func, m in memory_to_free:
+                    func(return_part, include_libs, m, "// ")
+                common_memory_free_code(return_part, include_libs, "res_ptr")
+                return_part.append("return final_ans;")
             elif "vector<Node*> neighbors;" in code_default:
                 return_part.append(
-                    "\treturn NodeNeighborsToJsonArray(solution.{}({}));".format(
+                    "\tNode *res_ptr = solution.{}({});".format(
                         func_name, ", ".join([v[-1] for v in variables])
                     )
                 )
+                return_part.append("json final_ans = NodeNeighborsToJsonArray(res_ptr);")
+                for func, m in memory_to_free:
+                    func(return_part, include_libs, m)
+                node_neighbors_memory_free_code(return_part, include_libs, "res_ptr")
+                return_part.append("return final_ans;")
             elif "Node* random;" in code_default:
                 return_part.append(
-                    "\treturn NodeRandomToJsonArray(solution.{}({}));".format(
+                    "\tNode *res_ptr = solution.{}({});".format(
                         func_name, ", ".join([v[-1] for v in variables])
                     )
                 )
+                return_part.append("json final_ans = NodeRandomToJsonArray(res_ptr);")
+                for func, m in memory_to_free:
+                    func(return_part, include_libs, m, "// ")
+                common_memory_free_code(return_part, include_libs, "res_ptr")
+                return_part.append("return final_ans;")
             else:
                 logging.debug(f"Unhandled Node Type return: {ret_type}, code: [{code_default}]")
+                if memory_to_free:
+                    return_part.append(
+                        "\tjson final_ans = solution.{}({});".format(
+                            func_name, ", ".join([v[-1] for v in variables])
+                        )
+                    )
+                    for func, m in memory_to_free:
+                        func(return_part, include_libs, m)
+                    return_part.append("return final_ans;")
+                else:
+                    return_part.append(
+                        "\treturn solution.{}({});".format(
+                            func_name, ", ".join([v[-1] for v in variables])
+                        )
+                    )
+        elif ret_type == "char":
+            if memory_to_free:
+                return_part.append(
+                    "\tjson final_ans = std::string(1, solution.{}({}));".format(
+                        func_name, ", ".join([v[-1] for v in variables])
+                    )
+                )
+                for func, m in memory_to_free:
+                    func(return_part, include_libs, m)
+                return_part.append("return final_ans;")
+            else:
+                return_part.append(
+                    "\treturn std::string(1, solution.{}({}));".format(
+                        func_name, ", ".join([v[-1] for v in variables])
+                    )
+                )
+        elif ret_type == "void":
+            if memory_to_free:
+                return_part.append(
+                    "\tsolution.{}({});".format(
+                        func_name, ", ".join([v[-1] for v in variables])
+                    )
+                )
+                delete_later = None
+                for func, m in memory_to_free:
+                    if if_modify_in_place and m in if_modify_in_place:
+                        delete_later = (func, m)
+                        continue
+                    func(return_part, include_libs, m)
+                if delete_later:
+                    return_part.append(f"json final_ans = {if_modify_in_place};")
+                    delete_later[0](return_part, include_libs, delete_later[1])
+                    return_part.append("return final_ans;")
+                else:
+                    return_part.append("return {};".format(if_modify_in_place or variables[0][1]))
+            else:
+                return_part.append(
+                    "\tsolution.{}({});\n\treturn {};".format(
+                        func_name, ", ".join([v[-1] for v in variables]), if_modify_in_place or variables[0][1]
+                    )
+                )
+        else:
+            if memory_to_free:
+                return_part.append(
+                    "\tjson final_ans = solution.{}({});".format(
+                        func_name, ", ".join([v[-1] for v in variables])
+                    )
+                )
+                for func, m in memory_to_free:
+                    func(return_part, include_libs, m)
+                return_part.append("return final_ans;")
+            else:
                 return_part.append(
                     "\treturn solution.{}({});".format(
                         func_name, ", ".join([v[-1] for v in variables])
                     )
                 )
-        elif ret_type == "char":
-            return_part.append(
-                "\treturn std::string(1, solution.{}({}));".format(
-                    func_name, ", ".join([v[-1] for v in variables])
-                )
-            )
-        elif ret_type == "void":
-            return_part.append(
-                "\tsolution.{}({});\n\treturn {};".format(
-                    func_name, ", ".join([v[-1] for v in variables]), if_modify_in_place or variables[0][1]
-                )
-            )
-        else:
-            return_part.append(
-                "\treturn solution.{}({});".format(
-                    func_name, ", ".join([v[-1] for v in variables])
-                )
-            )
 
     @staticmethod
     def _simplify_variable_type(variable: list[str]) -> str:

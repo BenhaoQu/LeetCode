@@ -9,6 +9,7 @@ on:
 
 jobs:
   release:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     concurrency:
       group: release
@@ -25,42 +26,25 @@ jobs:
       - name: Python Semantic Release
         # Adjust tag with desired version if applicable. Version shorthand
         # is NOT available, e.g. vX or vX.X will not work.
-        uses: python-semantic-release/python-semantic-release@v9.8.6
+        uses: python-semantic-release/python-semantic-release@v10.5.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          changelog: true
 
-      - name: Cleanup old tags and releases
+      - name: Cleanup old pre-release tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch all tags
           git fetch --tags
 
-          # Get the list of tags sorted by date
-          tags=$(git for-each-ref --sort=-taggerdate --format '%(refname:short)' refs/tags)
+          # 筛选出所有带连字符 '-' 的标签 (通常是 v1.0.0-beta.1 这类)
+          # 并排除掉最新的 5 个，防止正在发布的被删掉
+          tags_to_delete=$(git for-each-ref --sort=-taggerdate --format '%(refname:short)' refs/tags | grep "-" | tail -n +6)
 
-          # Get the current date in seconds since epoch
-          current_date=$(date +%s)
-
-          # Initialize counters
-          count=0
-          max_count=3
-          max_days=7
-
-          for tag in $tags; do
-            # Get the tag date in seconds since epoch
-            tag_date=$(git log -1 --format=%at $tag)
-
-            # Calculate the age of the tag in days
-            age_days=$(( (current_date - tag_date) / 86400 ))
-
-            if [ $age_days -le $max_days ] && [ $count -lt $max_count ]; then
-              count=$((count + 1))
-            else
-              # Delete the tag locally and remotely
-              git tag -d $tag
-              git push origin :refs/tags/$tag
-            fi
+          for tag in $tags_to_delete; do
+            echo "Deleting pre-release tag: $tag"
+            git push origin --delete $tag || true
+            git tag -d $tag || true
           done
 
       - name: Delete Draft Releases

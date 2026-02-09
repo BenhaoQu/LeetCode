@@ -50,6 +50,7 @@ __user_input_get_problem = """Please select the get problem method [0-5, default
 3. Random
 4. Random remain [Problems that submitted but not accepted yet]
 5. Category
+6. Contest
 """
 __user_input_submit = """Please select the submit method [0-4, default: 0]:
 0. Back
@@ -72,6 +73,13 @@ __user_input_page = """Total of [{}] elements, please enter [default: 0]:
 b. last page
 n. next page
 """
+__user_input_contest_type = """Please select the contest type [0-2, default: 0]:
+0. Back
+1. Weekly contest
+2. Biweekly contest
+"""
+__user_input_contest_id_num = """Enter the contest ID number (e.g. 1, 2, etc.): """
+
 __user_input_favorite_method = """Please select the favorite method [0-2, default: 0]:
 0. Back
 1. List problems in the favorite
@@ -85,6 +93,7 @@ __user_input_language = f"""Select multiple languages you want to use, separated
 
 __allow_all = lambda x: True
 __allow_all_not_empty = lambda x: bool(x.strip())
+__allow_number = lambda x: bool(re.match(r"^\d+$", x))
 
 
 def input_until_valid(prompt, check_func, error_msg=None):
@@ -99,7 +108,7 @@ def input_until_valid(prompt, check_func, error_msg=None):
 
 def input_pick_array(desc, arr):
     user_input = input_until_valid(
-        f"Enter the number of the {desc} [1-{len(arr)}, or 0 to go back (default), or input random to random: "
+        f"Enter the number of the {desc} [1-{len(arr)}, or 0 to go back (default), or input random to random:\n"
         f"0. Back\n{'\n'.join(f'{i}. {v}' for i, v in enumerate(arr, 1))}\n",
         __allow_all
     )
@@ -231,8 +240,10 @@ def get_problem(languages, problem_folder, cookie):
                     __user_input_problem_id, __allow_all_not_empty, "Problem ID cannot be empty."
                 )
                 problem_id = back_question_id(input_problem_id)
-                exit_code = get_problem_main(problem_id, cookie=cookie, replace_problem_id=True,
-                                             languages=languages, problem_folder=problem_folder)
+                exit_code = get_problem_main(
+                    problem_id, force=True, cookie=cookie, replace_problem_id=True, skip_language=True,
+                    languages=languages, problem_folder=problem_folder
+                )
                 if exit_code == 0:
                     print(f"Problem [{problem_id}] fetched successfully.")
                 else:
@@ -273,12 +284,48 @@ def get_problem(languages, problem_folder, cookie):
                 if pick_problem is None:
                     continue
                 problem_id = problems[pick_problem]
-                exit_code = get_problem_main(problem_id, cookie=cookie, replace_problem_id=True,
-                                             languages=languages, problem_folder=problem_folder)
+                exit_code = get_problem_main(
+                    problem_id, force=True, cookie=cookie, replace_problem_id=True, skip_language=True,
+                    languages=languages, problem_folder=problem_folder
+                )
                 if exit_code == 0:
                     print(f"Problem [{problem_id}] fetched successfully.")
                 else:
                     print(f"Failed to fetch the problem. Check {problem_id} is correct?")
+            case "6":
+                contest_type = input_until_valid(
+                    __user_input_contest_type,
+                    lambda x: x in ["0", "1", "2"],
+                    "Invalid input, please enter 1 for weekly contest, 2 for biweekly contest, or 0 to go back."
+                )
+                print(__separate_line)
+                contest_id = input_until_valid(
+                    __user_input_contest_id_num,
+                    __allow_number,
+                    "Invalid input, please enter a number."
+                )
+                print(__separate_line)
+                if contest_type == "0":
+                    return
+                elif contest_type == "1":
+                    contest_id = f"weekly-contest-{contest_id}"
+                elif contest_type == "2":
+                    contest_id = f"biweekly-contest-{contest_id}"
+                else:
+                    print("Invalid contest type, please try again.")
+                    continue
+                contest_questions = contest_lib.get_contest_info(contest_id)
+                results = []
+                with ThreadPoolExecutor(max_workers=max(1, len(contest_questions))) as executor:
+                    for question_data in contest_questions:
+                        results.append(
+                            executor.submit(get_problem_main, problem_slug=question_data["title_slug"], force=True,
+                                            cookie=cookie, skip_language=True,
+                                            languages=languages, problem_folder=problem_folder))
+                for future in results:
+                    exit_code = future.result()
+                    if exit_code != 0:
+                        print("Failed to fetch a contest problem. Please check the contest ID and try again.")
             case _:
                 return
 
@@ -352,7 +399,7 @@ def change_problem(languages, problem_folder):
             print(f"{lang} not support.")
             continue
         obj: lc_libs.LanguageWriter = cls()
-        obj.change_test(root_path, problem_folder, problem_id)
+        obj.change_test(root_path, problem_folder, format_question_id(problem_id))
         print(f"Successfully change {lang} test to {problem_id}")
     print(__separate_line)
 
@@ -417,7 +464,7 @@ def contest_main(languages, contest_folder, cookie):
     def process_question_worker(question_idx_data_tuple):
         question_idx, question_data = question_idx_data_tuple
         question_slug = question_data["title_slug"]
-        
+
         subp = p / chr(ord('a') + question_idx - 1)
         subp.mkdir(parents=True, exist_ok=True)
 
@@ -425,7 +472,7 @@ def contest_main(languages, contest_folder, cookie):
         # The original code specifically requests "python3" default code.
         # If you intend to use the `languages` variable from contest_main, replace ["python3"] with `languages`.
         problem_info = contest_lib.get_contest_problem_info(contest_id, question_slug, ["python3"], cookie)
-        
+
         if not problem_info:
             logging.error(f"Failed to get contest [{contest_id}] problem [{question_slug}]")
             return False
@@ -440,7 +487,7 @@ def contest_main(languages, contest_folder, cookie):
                 json.dump(problem_info["question_example_testcases"], f)
             with (subp / "output.json").open("w", encoding="utf-8") as f:
                 json.dump(problem_info["question_example_testcases_output"], f)
-            
+
             for lang, code_content in problem_info["language_default_code"].items():
                 cls = getattr(lc_libs, f"{lang.capitalize()}Writer", None)
                 if not cls:
@@ -463,16 +510,16 @@ def contest_main(languages, contest_folder, cookie):
     # Use ThreadPoolExecutor to process questions in parallel
     # Adjust max_workers as needed; for a few contest questions, len(contest_questions) is reasonable.
     # If contest_questions is empty, max_workers should be at least 1.
-    num_workers = max(1, len(contest_questions)) 
+    num_workers = max(1, len(contest_questions))
     with ThreadPoolExecutor(max_workers=num_workers) as executor:
         # Prepare arguments for each task - a list of (index, question_data) tuples
         tasks_data = list(enumerate(contest_questions, start=1))
-        
+
         # Using executor.map for simplicity as it handles submitting all tasks
         # and collecting results in order (though order of results isn't critical here).
         # list() ensures all tasks are started and waited for.
         results = list(executor.map(process_question_worker, tasks_data))
-        
+
         for result in results:
             if not result:
                 print("Some questions failed to process. Check the logs for details.")
@@ -512,17 +559,24 @@ def favorite_main(languages, problem_folder, cookie):
         return None
 
     def question_list(favorite_slug):
+        def question_to_str(q):
+            difficulty = constant.DIFFICULTY_TRANSLATE_MAP.get(q["difficulty"], "未知")
+            status = constant.STATUS_TRANSLATE_MAP.get(q["status"], "x")
+            paid_only = " {会员}" if q["paid_only"] else ""
+            return f"{status} [{q['question_frontend_id']}] {q['translated_title']} ({difficulty}){paid_only}"
+
         cur_page = 1
         page_size = 20
         while True:
-            _questions = query_favorite_questions(favorite_slug, cookie, limit=page_size, skip=(cur_page-1)*page_size)
+            _questions = query_favorite_questions(favorite_slug, cookie, limit=page_size,
+                                                  skip=(cur_page - 1) * page_size)
             total, data, has_more = _questions["total"], _questions["questions"], _questions["has_more"]
             max_page = math.ceil(total / page_size)
             if not data:
                 print("No questions found in this favorite.")
                 break
             content = "\n".join(
-                [f"{_i}. [{q['question_frontend_id']}] {q['translated_title']}" for _i, q in enumerate(data, start=1)],
+                [f"{_i}. {question_to_str(q)}" for _i, q in enumerate(data, start=1)],
             )
             user_input_select = input_until_valid(
                 __user_input_page.format(total, content),
@@ -534,7 +588,7 @@ def favorite_main(languages, problem_folder, cookie):
                     cur_page = max(1, cur_page - 1)
                 case "n":
                     cur_page = min(max_page, cur_page + 1)
-                case v if v.isdigit() and 1 <= int(v) <= 10:
+                case v if v.isdigit() and 1 <= int(v) <= page_size:
                     pick = int(v)
                 case _:
                     break
@@ -563,8 +617,10 @@ def favorite_main(languages, problem_folder, cookie):
                     question = question_list(slug)
                     if not question:
                         break
-                    code = get_problem_main(problem_slug=question["title_slug"], cookie=cookie, replace_problem_id=True,
-                                     languages=languages, problem_folder=problem_folder)
+                    code = get_problem_main(
+                        problem_slug=question["title_slug"], force=True, cookie=cookie, replace_problem_id=True,
+                        skip_language=True, languages=languages, problem_folder=problem_folder
+                    )
                     if code == 0:
                         print(f"Problem [{question['question_frontend_id']}]"
                               f" {question['translated_title']} fetched successfully.")
@@ -582,7 +638,7 @@ def favorite_main(languages, problem_folder, cookie):
                         print("No questions to add.")
                         continue
                     with ThreadPoolExecutor() as executor:
-                        slugs = list(executor.map(get_question_slug_by_id, question_ids))
+                        slugs = list(executor.map(get_question_slug_by_id, question_ids, [cookie] * len(question_ids)))
 
                     questions = []
                     for question_id, question_slug in zip(question_ids, slugs):

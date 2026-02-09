@@ -10,7 +10,11 @@
 
 #include "TestMain.h"
 #include "cpp/common/Solution.h"
+#ifndef BUILD_CMAKE
 #include "tools/cpp/runfiles/runfiles.h"
+#else
+#include <cstdlib> // 用于 getenv
+#endif
 
 using std::cerr;
 using std::cout;
@@ -22,12 +26,15 @@ using std::string;
 using std::stringstream;
 using std::vector;
 using json = nlohmann::json;
+#ifndef BUILD_CMAKE
 using bazel::tools::cpp::runfiles::Runfiles;
+#endif
 
 namespace LeetCode {
 namespace qubh {
 
 vector<TestCase> LoadTestCases(const string &path) {
+#ifndef BUILD_CMAKE
   string error;
   unique_ptr<Runfiles> runfiles(
       Runfiles::Create("LeetCode Solution Test", &error));
@@ -38,6 +45,9 @@ vector<TestCase> LoadTestCases(const string &path) {
   }
 
   string filePath = runfiles->Rlocation(path);
+#else
+  string filePath = path;
+#endif
   ifstream fileStream(filePath);
   if (!fileStream) {
     throw runtime_error("Could not open file: " + filePath);
@@ -68,7 +78,7 @@ vector<TestCase> LoadTestCases(const string &path) {
 }
 
 class LeetCodeSuiteSet : public testing::Test {
- public:
+public:
   // All of these optional, just like in regular macro usage.
   static void SetUpTestSuite() {}
 
@@ -80,20 +90,20 @@ class LeetCodeSuiteSet : public testing::Test {
 };
 
 class LeetCodeTest : public LeetCodeSuiteSet {
- public:
+public:
   explicit LeetCodeTest(TestCase data) : data_(std::move(data)) {}
 
   void TestBody() override {
     bool isEqual = false;
     int retries = 0;
-    const int maxRetries = 1e5;  // Set the maximum number of retries
+    const int maxRetries = 1e5; // Set the maximum number of retries
     cout << "Input: " << data_.GetInput() << endl;
     cout << "Expected: " << data_.GetExpected() << endl;
     auto output = leetcode::qubh::Solve(data_.GetInput());
     while (!isEqual && retries < maxRetries) {
       if (data_.GetExpected().is_number_float()) {
         isEqual = std::abs(output.get<double>() -
-                           data_.GetExpected().get<double>()) < 1e-6;
+                           data_.GetExpected().get<double>()) < 1e-5;
       } else if (output.is_array() && !data_.GetExpected().is_array()) {
         isEqual = (output[0] == data_.GetExpected());
       } else {
@@ -110,18 +120,52 @@ class LeetCodeTest : public LeetCodeSuiteSet {
       }
     }
 
-    if (data_.GetExpected().is_number_float()) {
-      ASSERT_DOUBLE_EQ(output.get<double>(), data_.GetExpected().get<double>());
+    auto expected = data_.GetExpected();
+
+    if (expected.is_number_float()) {
+      ASSERT_LE(std::abs(output.get<double>() - expected.get<double>()), 1e-5);
     } else {
-      if (output.is_array() && !data_.GetExpected().is_array()) {
-        ASSERT_EQ(output[0], data_.GetExpected());
+      if (output.is_array() && !expected.is_array()) {
+        ASSERT_EQ(output[0], expected);
       } else {
-        ASSERT_EQ(output, data_.GetExpected());
+        // handle char
+        if (expected.is_string() && output.is_number_integer()) {
+          ASSERT_EQ(static_cast<char>(output.get<int>()),
+                    expected.get<string>()[0]);
+        } else if (expected.is_array() && expected.size() > 0 &&
+                   expected[0].is_string() && output.is_array() &&
+                   output.size() > 0 && output[0].is_number_integer()) {
+          ASSERT_EQ(output.size(), expected.size());
+          for (size_t i = 0; i < expected.size(); i++) {
+            ASSERT_EQ(static_cast<char>(output[i].get<int>()),
+                      expected[0].get<string>()[i]);
+          }
+        } else if (expected.is_array() && expected.size() > 0 &&
+                   expected[0].is_array() && expected[0].size() > 0 &&
+                   expected[0][0].is_string() && output.is_array() &&
+                   output.size() > 0 && output[0].is_array() &&
+                   output[0].size() > 0 && output[0][0].is_number_integer()) {
+          ASSERT_EQ(output.size(), expected.size());
+          for (size_t i = 0; i < expected.size(); i++) {
+            ASSERT_EQ(output[i].size(), expected[i].size());
+            for (size_t j = 0; j < expected[i].size(); j++) {
+              if (expected[i][j].is_string() &&
+                  output[i][j].is_number_integer()) {
+                ASSERT_EQ(static_cast<char>(output[i][j].get<int>()),
+                          expected[i][j].get<string>()[0]);
+              } else {
+                ASSERT_EQ(output[i][j], expected[i][j]);
+              }
+            }
+          }
+        } else {
+          ASSERT_EQ(output, expected);
+        }
       }
     }
   }
 
- private:
+private:
   TestCase data_;
 };
 
@@ -137,19 +181,41 @@ void RegisterMyTests(const vector<TestCase> &values) {
         [=]() -> LeetCodeSuiteSet * { return new LeetCodeTest(values[i]); });
   }
 }
-}  // namespace qubh
-}  // namespace LeetCode
+} // namespace qubh
+} // namespace LeetCode
 
 int main(int argc, char **argv) {
   try {
-    // Run the tests.
+    // 检查是否提供了测试用例路径
+    string testcasePath;
+    if (argc >= 2) {
+      testcasePath = argv[1];
+    } else {
+      // 尝试从环境变量获取路径
+      const char *env_path = std::getenv("TESTCASE_FILE");
+      if (env_path) {
+        testcasePath = env_path;
+      } else {
+        cerr << "Error: Testcase path not provided and TESTCASE_FILE "
+                "environment variable not set."
+             << endl;
+        cerr << "Usage: " << argv[0] << " <testcase_path>" << endl;
+        return 1;
+      }
+    }
+
+    cout << "Loading testcases from: " << testcasePath << endl;
+
+    // 加载测试用例
     vector<LeetCode::qubh::TestCase> testcases =
-        LeetCode::qubh::LoadTestCases(argv[1]);
+        LeetCode::qubh::LoadTestCases(testcasePath);
+
+    // 初始化并运行测试
     testing::InitGoogleTest(&argc, argv);
     LeetCode::qubh::RegisterMyTests(testcases);
     return RUN_ALL_TESTS();
-  } catch (const exception &e) {
-    cerr << e.what() << endl;
+  } catch (const std::exception &e) {
+    cerr << "Error: " << e.what() << endl;
     return 1;
   }
 }

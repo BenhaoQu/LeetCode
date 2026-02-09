@@ -42,13 +42,13 @@ jobs:
     - name: Set up Python environment
       uses: actions/setup-python@v2
       with:
-        python-version: '3.12'
+        python-version: '3.14'
 
     - name: Set up Golang environment
       continue-on-error: true
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.25'
 
     - name: Set up JDK
       continue-on-error: true
