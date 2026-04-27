@@ -104,8 +104,8 @@ jobs:
         PUSH_SERVER: ${{ secrets.PUSH_SERVER || '' }}
         PUSH_KEY: ${{ secrets.PUSH_KEY || '' }}
         PROBLEM_FOLDER: ${{ secrets.PROBLEM_FOLDER || '' }}
-        LANGUAGES: ${{secrets.LANGUAGES || ''}}
-        USER: ${{ secrets.USER }}
+        LANGUAGES: ${{secrets.LANGUAGES || 'python3'}}
+        LEETCODE_USER: ${{ secrets.LEETCODE_USER }}
         LOG_LEVEL: ${{secrets.LOG_LEVEL || 'INFO'}}
       run:  |
         set +e
