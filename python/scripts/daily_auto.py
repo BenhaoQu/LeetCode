@@ -19,6 +19,12 @@ from python.utils import (get_default_folder, send_text_message, check_cookie_ex
                           find_similar_existing_problem, extract_method_from_template, create_link,
                           extract_main_site_reference)
 
+# Language name mapping: input name -> Writer class suffix
+# "go" -> "Golang" (GolangWriter), "python3" -> "Python3" (Python3Writer), etc.
+_LANG_TRANS_MAP = {
+    "go": "golang",
+}
+
 
 def write_question(root_path, dir_path, problem_folder: str, question_id: str, question_name: str,
                    slug: str, languages: List[str] = None, cookie: str = None,
@@ -139,7 +145,7 @@ def write_question(root_path, dir_path, problem_folder: str, question_id: str, q
     for language in languages:
         try:
             code = code_map[language]
-            cls = getattr(lc_libs, f"{language.capitalize()}Writer", None)
+            cls = getattr(lc_libs, f"{_LANG_TRANS_MAP.get(language, language).capitalize()}Writer", None)
             if not cls:
                 logging.warning(f"{language} Language Writer not supported yet")
                 continue
@@ -181,19 +187,28 @@ def process_daily(languages: list[str], problem_folder: str = None, cookie: str 
     )
     logging.debug(f"Success languages: {success_languages}, linked: {is_linked}")
 
-    # Only change test if not linked
-    if not is_linked:
-        for lang in success_languages:
+    # Always update daily field in daily-*.json and test files for all languages
+    if success_languages or is_linked:
+        # Call change_test for ALL languages (not just first one)
+        # Each language has its own test file that needs updating:
+        # - Python: daily-problems.json
+        # - Go: golang/solution_test.go (CRITICAL - was missing before!)
+        # - Java: qubhjava/src/test/resources/daily-problems.json
+        # - TypeScript: typescript/test.json
+        # - Rust: rust/solution_test config
+        # - C++: bazel query files
+        for lang in (languages or ["python3"]):
             try:
-                cls = getattr(lc_libs, f"{lang.capitalize()}Writer", None)
-                if not cls:
-                    logging.warning(f"{lang} Language Writer not supported yet")
-                    continue
-                obj: lc_libs.LanguageWriter = cls()
-                obj.change_test(root_path, tmp, question_id)
+                cls = getattr(lc_libs, f"{_LANG_TRANS_MAP.get(lang, lang).capitalize()}Writer", None)
+                if cls:
+                    obj: lc_libs.LanguageWriter = cls()
+                    obj.change_test(root_path, tmp, question_id)
+                    logging.debug(f"Updated test config for {lang}")
             except Exception as _:
-                logging.error(f"Failed to change daily test for {lang}", exc_info=True)
-                continue
+                logging.error(f"Failed to update test config for {lang}", exc_info=True)
+
+    # Note: change_test updates both daily-*.json AND language-specific test files
+    # The test execution happens separately via test.py / go test / mvn test etc.
     return None
 
 
@@ -234,7 +249,7 @@ def process_plans(cookie: str, languages: List[str] = None, problem_folder: str 
     if success_languages:
         for lang, problem_ids in success_languages.items():
             try:
-                cls = getattr(lc_libs, f"{lang.capitalize()}Writer", None)
+                cls = getattr(lc_libs, f"{_LANG_TRANS_MAP.get(lang, lang).capitalize()}Writer", None)
                 if not cls:
                     logging.warning(f"{lang} writer is not supported yet!")
                     continue
