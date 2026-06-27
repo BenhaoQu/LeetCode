@@ -26,6 +26,7 @@ class ProblemInfo:
     method_name: Optional[str] = None
     method_signature: Optional[str] = None
     constraints: Optional[str] = None
+    return_type: Optional[str] = None  # Extracted from testcase or signature
 
 
 # Pattern to match "本题与主站 xxx 题相同" or similar references
@@ -34,6 +35,92 @@ class ProblemInfo:
 # - "注意：本题与主站 1991 题相同"
 # - "注意：本题与主站 29&nbsp;题相同" (&nbsp; instead of space)
 MAIN_SITE_SAME_PATTERN = re.compile(r"注意[：:]\s*本题与主站\s*(\d+)(?:&nbsp;|\s*)题相同")
+
+# Pattern to match "similar to X but Y" - indicates related but DIFFERENT problems
+# Examples:
+# - "This problem is similar to Find Minimum in Rotated Sorted Array, but nums may contain duplicates"
+# - "This problem is similar to Problem 154, but..."
+# - "similar to [title], but"
+SIMILAR_BUT_DIFFERENT_PATTERN = re.compile(
+    r"(?:this\s+problem\s+is\s+)?similar\s+to\s+(?:problem\s+)?([^,]+?),\s*but",
+    re.IGNORECASE
+)
+
+# Roman numeral pattern for detecting series problems (I, II, III, IV, V, etc.)
+# Match both uppercase and lowercase (normalized text is lowercase)
+ROMAN_NUMERAL_PATTERN = re.compile(r'\b([IVXivx]+)\b$')
+
+# Valid Roman numerals for series detection (both cases)
+VALID_ROMAN_SERIES = {'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
+                      'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
+                      'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'}
+
+
+def is_series_problem(title1: str, title2: str) -> bool:
+    """
+    Check if two problems are part of a series (e.g., "Problem I" vs "Problem II").
+
+    Series problems often have similar titles and signatures but different logic.
+    They should NOT be auto-linked because the differences are usually significant.
+
+    Args:
+        title1: First problem title
+        title2: Second problem title
+
+    Returns:
+        True if they appear to be series problems with different Roman numerals
+    """
+    # Normalize and extract Roman numerals from titles
+    t1_normalized = normalize_text(title1)
+    t2_normalized = normalize_text(title2)
+
+    # Find Roman numerals at the end of titles
+    match1 = ROMAN_NUMERAL_PATTERN.search(t1_normalized)
+    match2 = ROMAN_NUMERAL_PATTERN.search(t2_normalized)
+
+    # Case 1: Both titles have Roman numerals at the end
+    if match1 and match2:
+        roman1 = match1.group(1)
+        roman2 = match2.group(1)
+
+        # Only consider valid series Roman numerals
+        if roman1 in VALID_ROMAN_SERIES and roman2 in VALID_ROMAN_SERIES:
+            # Check if the rest of the title is the same
+            rest1 = t1_normalized[:match1.start()].strip()
+            rest2 = t2_normalized[:match2.start()].strip()
+
+            if rest1 and rest2 and rest1 == rest2:
+                # Different Roman numerals but same base title = series problem
+                return roman1 != roman2
+
+    # Case 2: One title has Roman numeral, the other doesn't (e.g., "Jump Game" vs "Jump Game II")
+    if (match1 and not match2) or (match2 and not match1):
+        # Extract the base title from the one with Roman numeral
+        if match1:
+            roman1 = match1.group(1)
+            if roman1 in VALID_ROMAN_SERIES:
+                rest1 = t1_normalized[:match1.start()].strip()
+                # Check if the other title matches the base title
+                if rest1 and rest1 == t2_normalized.strip():
+                    return True
+        if match2:
+            roman2 = match2.group(1)
+            if roman2 in VALID_ROMAN_SERIES:
+                rest2 = t2_normalized[:match2.start()].strip()
+                # Check if the other title matches the base title
+                if rest2 and rest2 == t1_normalized.strip():
+                    return True
+
+    return False
+
+
+# Chinese pattern for "similar but different"
+# Examples:
+# - "本题与主站 153 题类似，但可能包含重复元素"
+SIMILAR_BUT_DIFFERENT_CN_PATTERN = re.compile(
+    r"本题与主站\s*(\d+)(?:&nbsp;|\s*)题类似[，,]",
+    re.IGNORECASE
+)
 
 
 def extract_main_site_reference(description: str) -> Optional[str]:
@@ -53,6 +140,39 @@ def extract_main_site_reference(description: str) -> Optional[str]:
     match = MAIN_SITE_SAME_PATTERN.search(description)
     if match:
         return match.group(1)
+    return None
+
+
+def extract_similar_but_different_reference(description: str) -> Optional[Tuple[str, str]]:
+    """
+    Extract reference from "similar to X but Y" pattern in description.
+    This indicates the problem is related to but DIFFERENT from the referenced problem.
+
+    Args:
+        description: Problem description (HTML or plain text)
+
+    Returns:
+        Tuple of (reference_type, reference_value) if found, None otherwise.
+        reference_type is either 'id' or 'title'
+    """
+    if not description:
+        return None
+
+    # Check Chinese pattern first
+    match_cn = SIMILAR_BUT_DIFFERENT_CN_PATTERN.search(description)
+    if match_cn:
+        return ('id', match_cn.group(1))
+
+    # Check English pattern
+    match_en = SIMILAR_BUT_DIFFERENT_PATTERN.search(description)
+    if match_en:
+        ref = match_en.group(1).strip()
+        # Check if reference is a number (problem ID)
+        if ref.isdigit():
+            return ('id', ref)
+        # Otherwise it's a title
+        return ('title', ref)
+
     return None
 
 
@@ -135,6 +255,65 @@ def extract_method_info(solution_py_path: Path) -> Tuple[Optional[str], Optional
     return None, None
 
 
+def extract_return_type_from_testcase(testcase_path: Path) -> Optional[str]:
+    """
+    Extract return type from testcase file by analyzing output values.
+
+    Note: This function infers types from values, but cannot distinguish
+    between int and bool when outputs are [0, 1]. In such cases, returns
+    'int' and relies on solution.py type annotations for accurate detection.
+
+    Args:
+        testcase_path: Path to testcase file (JSON format)
+
+    Returns:
+        Inferred return type: 'int', 'bool', 'str', 'float', 'List', 'Dict', 'Any'
+    """
+    if not testcase_path.exists():
+        return None
+
+    try:
+        with testcase_path.open("r", encoding="utf-8") as f:
+            content = f.read().strip()
+
+        # testcase format: line 1 is inputs, line 2 is outputs
+        lines = content.split("\n")
+        if len(lines) < 2:
+            return None
+
+        outputs_str = lines[1].strip()
+
+        # Parse outputs as JSON array
+        outputs = json.loads(outputs_str)
+        if not outputs:
+            return None
+
+        # Sample first few outputs to determine type
+        sample = outputs[0]
+
+        if isinstance(sample, bool):
+            # Python's json loads true/false as Python bool
+            return "bool"
+        elif isinstance(sample, int):
+            # Don't auto-detect bool from [0, 1] - can be misleading
+            # (e.g., minCut returns 0 or 1 cuts, but it's int not bool)
+            return "int"
+        elif isinstance(sample, float):
+            return "float"
+        elif isinstance(sample, str):
+            return "str"
+        elif isinstance(sample, list):
+            return "List"
+        elif isinstance(sample, dict):
+            return "Dict"
+        else:
+            return "Any"
+
+    except (json.JSONDecodeError, IndexError, TypeError) as e:
+        logging.debug(f"Failed to parse testcase {testcase_path}: {e}")
+        return None
+
+
 def normalize_text(text: str) -> str:
     """Normalize text for comparison by removing numbers, whitespace variations, etc."""
     if not text:
@@ -149,7 +328,11 @@ def normalize_text(text: str) -> str:
     # Remove inline code
     text = re.sub(r'`[^`]+`', '', text)
 
-    # Remove numbers (data ranges, etc.)
+    # Remove numbers with following dot (e.g., "3689. Title" -> ". Title")
+    # This pattern matches digits followed by a dot, which is common in problem titles
+    text = re.sub(r'\b\d+\.\s*', '', text)
+
+    # Remove remaining standalone numbers (data ranges, etc.)
     text = re.sub(r'\b\d+\b', '', text)
 
     # Remove extra whitespace
@@ -195,6 +378,13 @@ def compare_problems(p1: ProblemInfo, p2: ProblemInfo) -> Tuple[bool, float, str
     Returns:
         Tuple of (is_similar, similarity_score, reason)
     """
+    # CRITICAL: Check for series problems first (I, II, III, etc.)
+    # Series problems often have similar titles/signatures but different logic
+    # They should NOT be auto-linked
+    if is_series_problem(p1.title, p2.title):
+        logging.debug(f"Series problem detected: '{p1.title}' vs '{p2.title}' - skipping auto-link")
+        return False, 0.0, "series problem (different Roman numeral versions)"
+
     scores = []
 
     # 1. Compare normalized descriptions
@@ -211,7 +401,19 @@ def compare_problems(p1: ProblemInfo, p2: ProblemInfo) -> Tuple[bool, float, str
             desc_similarity = overlap / union if union > 0 else 0
             scores.append(("description", desc_similarity, 0.5))  # 50% weight
 
-    # 2. Compare method signatures
+    # 2. Compare return types (CRITICAL: must match for valid linking)
+    # Use return_type from testcase (most reliable), fallback to signature
+    ret_type1 = p1.return_type
+    ret_type2 = p2.return_type
+
+    if ret_type1 and ret_type2:
+        # CRITICAL: Return types must match for valid linking
+        # Different return types = fundamentally different solutions
+        if ret_type1 != ret_type2:
+            logging.debug(f"Return types differ: {ret_type1} vs {ret_type2}")
+            return False, 0.0, f"return types differ ({ret_type1} vs {ret_type2})"
+
+    # 3. Compare method signatures
     if p1.method_name and p2.method_name:
         if p1.method_name == p2.method_name:
             scores.append(("method_name", 1.0, 0.3))  # 30% weight for matching method name
@@ -287,13 +489,24 @@ def load_problem_info(problem_path: Path) -> Optional[ProblemInfo]:
     solution_py = problem_path / "solution.py"
     method_name, method_signature = extract_method_info(solution_py)
 
+    # Get return type from testcase (most reliable source)
+    testcase_path = problem_path / "testcase"
+    return_type = extract_return_type_from_testcase(testcase_path)
+
+    # Fallback: extract return type from signature if testcase not available
+    if return_type is None and method_signature:
+        ret_match = re.search(r'->\s*(\w+(?:\[[^\]]+\])?)', method_signature)
+        if ret_match:
+            return_type = ret_match.group(1)
+
     return ProblemInfo(
         problem_id=problem_id,
         title=title,
         description=description,
         method_name=method_name,
         method_signature=method_signature,
-        constraints=constraints
+        constraints=constraints,
+        return_type=return_type
     )
 
 
@@ -344,6 +557,22 @@ def find_similar_existing_problem(root_path: Path, problem_folder: str, problem_
     if not problems_dir.exists():
         return None
 
+    # Check if description contains "similar to X but Y" pattern
+    # This indicates the problem is related but DIFFERENT, should not be auto-linked
+    similar_but_different_ref = extract_similar_but_different_reference(description)
+    excluded_ids = set()
+    excluded_titles = set()
+
+    if similar_but_different_ref:
+        ref_type, ref_value = similar_but_different_ref
+        if ref_type == 'id':
+            excluded_ids.add(ref_value)
+            logging.info(f"Problem {problem_id} references problem {ref_value} as 'similar but different', excluding from auto-link")
+        else:
+            # Normalize title for comparison
+            excluded_titles.add(normalize_text(ref_value))
+            logging.info(f"Problem {problem_id} references '{ref_value}' as 'similar but different', excluding from auto-link")
+
     new_info = ProblemInfo(
         problem_id=problem_id,
         title=title,
@@ -367,9 +596,25 @@ def find_similar_existing_problem(root_path: Path, problem_folder: str, problem_
         if existing_id == problem_id:
             continue
 
+        # Skip if this problem ID is excluded due to "similar but different" reference
+        if existing_id in excluded_ids:
+            logging.debug(f"Skipping {existing_id} - excluded by 'similar but different' reference")
+            continue
+
         existing_info = load_problem_info(problem_dir)
         if not existing_info:
             continue
+
+        # Skip if this problem's title matches excluded titles
+        if excluded_titles:
+            existing_title_normalized = normalize_text(existing_info.title)
+            # Remove Roman numerals for comparison
+            existing_title_clean = re.sub(r'\b[IVX]+\b|\b\d+\b', '', existing_title_normalized).strip()
+            for excluded_title in excluded_titles:
+                excluded_clean = re.sub(r'\b[IVX]+\b|\b\d+\b', '', excluded_title).strip()
+                if existing_title_clean == excluded_clean:
+                    logging.debug(f"Skipping {existing_id} - title matches excluded '{excluded_title}'")
+                    continue
 
         is_similar, score, reason = compare_problems(new_info, existing_info)
 
