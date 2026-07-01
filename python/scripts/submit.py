@@ -3,15 +3,16 @@ import asyncio
 import logging
 import os
 import sys
-import traceback
 from pathlib import Path
 
-from dotenv import load_dotenv
+# Bootstrap: add project root to sys.path before importing python.*
+_root = Path(__file__).resolve().parents[2]
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root))
 
-sys.path.append(Path(__file__).parent.parent.parent.as_posix())
 from python import lc_libs as lc_libs
 from python.constants import constant
-from python.utils import get_default_folder, back_question_id, format_question_id, check_cookie_expired, resolve_link
+from python.utils import get_default_folder, back_question_id, format_question_id, check_cookie_expired, resolve_link, init_env
 
 _LANG_TRANS_MAP = {
     "go": "golang",
@@ -46,6 +47,18 @@ async def main(root_path: Path, problem_id: str, lang: str, cookie: str,
             logging.error(f"Unable to get problem_id: {problem_id}, check input or environments folder")
             return
         load_code = True
+        # Check if this is the daily problem (only when not explicitly specified via -id/-slug)
+        try:
+            daily_info = lc_libs.get_daily_question()
+            if daily_info:
+                daily_id = daily_info.get("questionId", "")
+                if daily_id and format_question_id(daily_id) != problem_id:
+                    logging.warning(
+                        f"⚠️  当前提交的题目 [{problem_id}] 不是今日每日一题 [{daily_id}]！"
+                        f"请确认是否在正确的分支上提交。"
+                    )
+        except Exception as e:
+            logging.warning(f"无法检查每日一题状态: {e}")
 
     # Resolve link if exists (only for code, not for problem ID)
     solution_problem_id = problem_id
@@ -141,7 +154,6 @@ async def main(root_path: Path, problem_id: str, lang: str, cookie: str,
 
 if __name__ == '__main__':
     rp = Path(__file__).parent.parent.parent
-    sys.path.insert(0, str(rp / "python"))
     parser = argparse.ArgumentParser()
     parser.add_argument("-id", required=False, type=str, help="The id of question to submit.", default="")
     parser.add_argument("-slug", required=False, type=str,
@@ -152,11 +164,7 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--daily", required=False, action="store_true",
                         help="To daily submission.")
     args = parser.parse_args()
-    try:
-        load_dotenv()
-    except Exception as e:
-        print(f"Load Env exception, {e}")
-        traceback.print_exc()
+    init_env()
     if args.daily:
         question_id = lc_libs.get_daily_question()["questionId"]
     else:

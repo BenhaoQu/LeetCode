@@ -18,6 +18,7 @@ import math
 import os
 import random
 import re
+import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -25,10 +26,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv, set_key
 
-# Setup paths
-file_path = Path(__file__)
-root_path = file_path.parent.parent.parent
-sys.path.insert(0, root_path.as_posix())
+import sys; from pathlib import Path; _root = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(_root))
 
 # Import CLI modules
 from python.scripts.cli import (
@@ -50,8 +48,10 @@ from python.scripts.daily_auto import main as daily_auto_main
 from python.scripts.get_problem import main as get_problem_main, get_question_slug_by_id
 from python.scripts.tools import lucky_main, remain_main, clean_empty_java_main, clean_error_rust_main
 from python.scripts.fetch_solution_articles import main as fetch_solution_main
+from python.scripts.repository_health import scan_repository, format_report, build_fix_suggestions, apply_fix
 
 # Constants
+root_path = Path(__file__).resolve().parents[2]
 SEPARATE_LINE = "-" * 50
 SUPPORTED_LANGUAGES = ["python3", "java", "golang", "cpp", "typescript", "rust"]
 
@@ -664,79 +664,85 @@ def contest_main(languages, contest_folder, cookie):
 # Favorite Management
 # ============================================================================
 
+def _favorite_question_to_str(q):
+    """Format a favorite question for display."""
+    difficulty = constant.DIFFICULTY_TRANSLATE_MAP.get(q["difficulty"], "未知")
+    status = constant.STATUS_TRANSLATE_MAP.get(q["status"], "x")
+    paid_only = " {会员}" if q["paid_only"] else ""
+    return f"{status} [{q['question_frontend_id']}] {q['translated_title']} ({difficulty}){paid_only}"
+
+
+def _favorite_list(cookie):
+    """Browse favorite list and return selected favorite."""
+    while True:
+        my_favorites = query_my_favorites(cookie)
+        total, data, has_more = my_favorites["total"], my_favorites["favorites"], my_favorites["has_more"]
+        if not data:
+            print(t("fav_no_favorites"))
+            break
+        content = "\n".join(
+            [f"{_i}. {f['name']}" for _i, f in enumerate(data, start=1)],
+        )
+        user_input_select = input_until_valid(
+            t("contest_page", total=total, content=content),
+            allow_all
+        )
+        pick = None
+        match user_input_select:
+            case v if v.isdigit() and 1 <= int(v) <= 10:
+                pick = int(v)
+            case _:
+                break
+        print(SEPARATE_LINE)
+        if not pick:
+            continue
+        return data[pick - 1]
+    return None
+
+
+def _favorite_question_list(favorite_slug, cookie):
+    """Browse questions in a favorite and return selected question."""
+    cur_page = 1
+    page_size = 20
+    while True:
+        _questions = query_favorite_questions(favorite_slug, cookie, limit=page_size,
+                                              skip=(cur_page - 1) * page_size)
+        total, data, has_more = _questions["total"], _questions["questions"], _questions["has_more"]
+        max_page = math.ceil(total / page_size)
+        if not data:
+            print(t("fav_no_questions"))
+            break
+        content = "\n".join(
+            [f"{_i}. {_favorite_question_to_str(q)}" for _i, q in enumerate(data, start=1)],
+        )
+        user_input_select = input_until_valid(
+            t("contest_page", total=total, content=content),
+            allow_all
+        )
+        pick = None
+        match user_input_select:
+            case "b":
+                cur_page = max(1, cur_page - 1)
+            case "n":
+                cur_page = min(max_page, cur_page + 1)
+            case v if v.isdigit() and 1 <= int(v) <= page_size:
+                pick = int(v)
+            case _:
+                break
+        print(SEPARATE_LINE)
+        if not pick:
+            continue
+        return data[pick - 1]
+    return None
+
+
 def favorite_main(languages, problem_folder, cookie):
     """Favorite menu handler"""
-    def favorite_list():
-        while True:
-            my_favorites = query_my_favorites(cookie)
-            total, data, has_more = my_favorites["total"], my_favorites["favorites"], my_favorites["has_more"]
-            if not data:
-                print(t("fav_no_favorites"))
-                break
-            content = "\n".join(
-                [f"{_i}. {f['name']}" for _i, f in enumerate(data, start=1)],
-            )
-            user_input_select = input_until_valid(
-                t("contest_page", total=total, content=content),
-                allow_all
-            )
-            pick = None
-            match user_input_select:
-                case v if v.isdigit() and 1 <= int(v) <= 10:
-                    pick = int(v)
-                case _:
-                    break
-            print(SEPARATE_LINE)
-            if not pick:
-                continue
-            return data[pick - 1]
-        return None
-
-    def question_list(favorite_slug):
-        def question_to_str(q):
-            difficulty = constant.DIFFICULTY_TRANSLATE_MAP.get(q["difficulty"], "未知")
-            status = constant.STATUS_TRANSLATE_MAP.get(q["status"], "x")
-            paid_only = " {会员}" if q["paid_only"] else ""
-            return f"{status} [{q['question_frontend_id']}] {q['translated_title']} ({difficulty}){paid_only}"
-
-        cur_page = 1
-        page_size = 20
-        while True:
-            _questions = query_favorite_questions(favorite_slug, cookie, limit=page_size,
-                                                  skip=(cur_page - 1) * page_size)
-            total, data, has_more = _questions["total"], _questions["questions"], _questions["has_more"]
-            max_page = math.ceil(total / page_size)
-            if not data:
-                print(t("fav_no_questions"))
-                break
-            content = "\n".join(
-                [f"{_i}. {question_to_str(q)}" for _i, q in enumerate(data, start=1)],
-            )
-            user_input_select = input_until_valid(
-                t("contest_page", total=total, content=content),
-                allow_all
-            )
-            pick = None
-            match user_input_select:
-                case "b":
-                    cur_page = max(1, cur_page - 1)
-                case "n":
-                    cur_page = min(max_page, cur_page + 1)
-                case v if v.isdigit() and 1 <= int(v) <= page_size:
-                    pick = int(v)
-                case _:
-                    break
-            print(SEPARATE_LINE)
-            if not pick:
-                continue
-            return data[pick - 1]
-        return None
-
     if check_cookie_expired(cookie):
         print(t("fav_expired"))
         return
     while True:
-        favorite = favorite_list()
+        favorite = _favorite_list(cookie)
         if not favorite:
             return
         slug = favorite["slug"]
@@ -748,7 +754,7 @@ def favorite_main(languages, problem_folder, cookie):
             print(SEPARATE_LINE)
             match favorite_method:
                 case "1":
-                    question = question_list(slug)
+                    question = _favorite_question_list(slug, cookie)
                     if not question:
                         break
                     code = get_problem_main(
@@ -837,6 +843,40 @@ def link_problems(problem_folder):
     print(SEPARATE_LINE)
 
 
+def repository_health(problem_folder: str):
+    """Run generated problem repository health checks."""
+    print(t("health_running", folder=problem_folder))
+    report = scan_repository(root_path, [problem_folder])
+    print(format_report(report, root_path))
+    fixes = build_fix_suggestions(report, root_path)
+    if fixes:
+        print()
+        print(t("health_fix_header"))
+        for idx, fix in enumerate(fixes, start=1):
+            print(f"{idx}. {fix.display(root_path)}")
+        selection = input_until_valid(t("health_fix_select"), allow_all)
+        selected_indices: list[int] = []
+        if selection.lower() == "a":
+            selected_indices = list(range(len(fixes)))
+        else:
+            for part in selection.split(","):
+                part = part.strip()
+                if part.isdigit() and 1 <= int(part) <= len(fixes):
+                    selected_indices.append(int(part) - 1)
+        for idx in dict.fromkeys(selected_indices):
+            fix = fixes[idx]
+            confirm = input_until_valid(t("health_fix_confirm", fix=fix.display(root_path)), allow_all)
+            if confirm.lower() != "y":
+                print(t("health_fix_skipped"))
+                continue
+            print(apply_fix(fix))
+        if selected_indices:
+            print()
+            report = scan_repository(root_path, [problem_folder])
+            print(format_report(report, root_path))
+    print(SEPARATE_LINE)
+
+
 def _get_problem_slug_from_id(problem_id: str, cookie: str) -> Optional[str]:
     """通过题目 ID 获取 problem_slug"""
     origin_problem_id = back_question_id(problem_id)
@@ -898,7 +938,6 @@ def _display_solution_detail(title: str, author_name: str, upvote: int,
 
     # 使用分页器展示内容
     if content:
-        import subprocess
         import tempfile
         tmp_path = None
         try:
@@ -1148,11 +1187,23 @@ def main():
     parser = argparse.ArgumentParser(description="LeetCode 工具集")
     parser.add_argument('--en', action='store_true', help='Use English interface')
     parser.add_argument('--init', action='store_true', help='Force initialization wizard')
+    parser.add_argument('--health', action='store_true', help='Run repository health checks and exit')
+    parser.add_argument('--health-folder', default=None, help='Problem folder to scan for --health')
     args = parser.parse_args()
 
     # Set language
     if args.en:
         set_language("en")
+
+    if args.health:
+        try:
+            load_dotenv()
+        except Exception:
+            logging.debug("Failed to load .env for health check", exc_info=True)
+        health_folder = args.health_folder or os.getenv(constant.PROBLEM_FOLDER, "problems")
+        report = scan_repository(root_path, [health_folder])
+        print(format_report(report, root_path))
+        return 0 if report.ok else 1
 
     try:
         if args.init:
@@ -1190,13 +1241,15 @@ def main():
                     link_problems(problem_folder)
                 case "9":
                     solution_center(cookie, problem_folder)
+                case "10":
+                    repository_health(problem_folder)
                 case _:
                     print(t("main_exit"))
-                    break
+                    return 0
     except KeyboardInterrupt:
         print(f"\n{t('main_bye')}")
+        return 130
 
 
 if __name__ == '__main__':
-    main()
-    sys.exit()
+    sys.exit(main())

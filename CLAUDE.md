@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Local Configuration
+
+This repository supports a local configuration file for personalized settings:
+
+- **`CLAUDE.local.md`** - User-specific configuration (gitignored, won't affect other users)
+- Create this file to customize behavior without modifying shared config
+
+Example `CLAUDE.local.md`:
+```markdown
+## Daily Problem Strategy
+
+- If `solution.py` exists → use Go (`solution.go`)
+- Otherwise → use primary language from `.env`
+```
+
+Claude Code automatically reads `CLAUDE.local.md` if it exists.
+
 ## Repository Overview
 
 This is a LeetCode solutions repository with multi-language support. Each problem has a dedicated folder with solutions in Python, Go, Java, C++, TypeScript, and Rust.
@@ -137,7 +154,7 @@ class Testcase(testcase.Testcase):
 
 ## Multi-Language Test Commands
 
-All languages read from `daily-{folder}.json` config file **except Go and Rust** (see notes below).
+All languages read from `daily-{folder}.json` config file **except Rust** (see notes below).
 
 | Language | Single Problem                                                                                           | Multiple Problems                                                                                                 |
 |----------|----------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
@@ -152,12 +169,13 @@ All languages read from `daily-{folder}.json` config file **except Go and Rust**
 
 **Go:**
 - Requires `-tags=goexperiment.jsonv2` for `encoding/json/v2` (Go 1.25+)
-- `solution_test.go` is **hardcoded** — must manually edit import path and problem ID:
-  ```go
-  import problem "leetCode/problems/problems_1"
-  func TestSolution(t *testing.T) {
-      TestEach(t, "1", "problems", problem.Solve)
-  }
+- Run `PYTHONPATH=. python golang/go_setup.py` to generate `solution_test.go` and `problems_test.go` from `daily-{folder}.json`
+- Must use specific file paths (not package path) to avoid compiling all test files:
+  ```bash
+  # Single problem - only compiles solution_test.go
+  go test -tags=goexperiment.jsonv2 golang/solution_test.go golang/test_basic.go -test.timeout 3s
+  # Multiple problems - only compiles problems_test.go
+  go test -tags=goexperiment.jsonv2 golang/problems_test.go golang/test_basic.go -test.timeout 10s
   ```
 
 **Rust:**

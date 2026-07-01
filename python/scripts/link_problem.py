@@ -14,7 +14,7 @@ import logging
 import sys
 from pathlib import Path
 
-sys.path.append(Path(__file__).parent.parent.parent.as_posix())
+import sys; from pathlib import Path; _root = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(_root))
 
 from python.utils import create_link
 
