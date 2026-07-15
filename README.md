@@ -509,10 +509,12 @@ and tasks.json under `.vscode`
       "command": "go",
       "args": [
         "test",
+        "-tags=goexperiment.jsonv2",
         "golang/solution_test.go",
         "golang/test_basic.go",
         "-test.timeout",
-        "3s"
+        "3s",
+        "-v"
       ],
       "type": "shell"
     },
@@ -521,10 +523,12 @@ and tasks.json under `.vscode`
       "command": "go",
       "args": [
         "test",
+        "-tags=goexperiment.jsonv2",
         "golang/problems_test.go",
         "golang/test_basic.go",
         "-test.timeout",
-        "10s"
+        "10s",
+        "-v"
       ],
       "type": "shell"
     },
@@ -534,7 +538,7 @@ and tasks.json under `.vscode`
       "command": "sh",
       "args": [
         "-c",
-        "bazel fetch --force daily && bazel test --cxxopt=-std=c++23 --cxxopt=-O2 --cxxopt=-fsanitize=address --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1 --linkopt=-fsanitize=address --test_timeout=3 --test_output=all //:daily_test"
+        "bazel fetch --force daily && bazel test --cxxopt=-std=c++23 --cxxopt=-O2 --cxxopt=-fsanitize=address --linkopt=-fsanitize=address --test_timeout=3 --test_output=all //:daily_test"
       ]
     },
     {
@@ -543,7 +547,7 @@ and tasks.json under `.vscode`
       "command": "sh",
       "args": [
         "-c",
-        "bazel fetch --force daily && bazel test --cxxopt=-std=c++23 --cxxopt=-O2 --cxxopt=-fsanitize=address --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1 --linkopt=-fsanitize=address --test_timeout=10 --test_output=all $(bazel query \"filter(\\\"plan_*\\\", kind(cc_test, //...))\")"
+        "bazel fetch --force daily && bazel test --cxxopt=-std=c++23 --cxxopt=-O2 --cxxopt=-fsanitize=address --linkopt=-fsanitize=address --test_timeout=10 --test_output=all $(bazel query \"filter(\\\"plan_*\\\", kind(cc_test, //...))\")"
       ]
     },
     {
